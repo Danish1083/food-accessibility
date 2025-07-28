@@ -1,0 +1,41 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Downtown"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-104.6189, 50.4452],
+            [-104.6100, 50.4452],
+            [-104.6100, 50.4500],
+            [-104.6189, 50.4500],
+            [-104.6189, 50.4452]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Cathedral"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-104.6300, 50.4500],
+            [-104.6200, 50.4500],
+            [-104.6200, 50.4600],
+            [-104.6300, 50.4600],
+            [-104.6300, 50.4500]
+          ]
+        ]
+      }
+    }
+  ]
+}
