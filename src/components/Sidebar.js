@@ -1,133 +1,64 @@
-export default function Sidebar({
-  layers = [],
-  visibleLayers = [],
-  onToggle,
-  visibleHeatmaps = [],
-  onToggleHeatmap
-}) {
-  // Add legend items for City Limits and Neighbourhoods
-  const customLegend = [
-    {
-      id: "citylimits-line",
-      label: "City Limits",
-      render: (
-        <span
-          style={{
-            display: "inline-block",
-            width: 26,
-            height: 0,
-            borderTop: "5px solid #114b07",
-            marginRight: 8,
-            verticalAlign: "middle"
-          }}
-        />
-      )
-    },
-    {
-      id: "neighbourhoods-fill",
-      label: "Neighbourhoods",
-      render: (
-        <span
-          style={{
-            display: "inline-block",
-            width: 18,
-            height: 18,
-            background:
-              "linear-gradient(135deg, #ffadad 0%, #ffd6a5 35%, #9bf6ff 70%, #bdb2ff 100%)", // indicates multi-color
-            border: "2px solid #444",
-            borderRadius: 4,
-            marginRight: 8,
-            verticalAlign: "middle"
-          }}
-        />
-      )
-    }
-  ];
+import "./Sidebar.css";
 
-  // Utility: store layer IDs to show heatmap toggle for
-  const HEATMAP_LAYERS = ["convenience-stores", "grocery-stores"];
+export default function Sidebar({ layers = [], visibleLayers = [], onToggle }) {
+function getLegendSymbol(layer) {
+    if (layer.id === "citylimits" || layer.id === "neighbourhoods") {
+    return null;
+  }
+ 
+  switch (layer.shape) {
+    case "circle":
+      return <span className="legend-symbol circle" style={{ background: layer.color }} />;
+    case "square":
+      return <span className="legend-symbol square" style={{ background: layer.color, border: layer.border || "2px solid #444" }} />;
+    case "triangle":
+      return <span className="legend-symbol triangle" style={{ borderBottomColor: layer.color }} />;
+    case "star":
+      return <span className="legend-symbol star" style={{ color: layer.color }}>★</span>;
+    case "hexagon":
+      return (
+        <svg width="18" height="16" className="legend-symbol hexagon">
+          <polygon points="9,1 17,5 17,13 9,16 1,13 1,5" fill={layer.color} stroke="#444" strokeWidth="1.5"/>
+        </svg>
+      );
+    case "custom-image":
+      return (
+        <img
+          src={layer.imagePath}
+          alt={layer.label}
+          className="legend-symbol custom-image"
+        />
+      );
+    default:
+      return <span className="legend-symbol circle" style={{ background: layer.color }} />;
+  }
+}
 
+
+  
   return (
-    <div
-      style={{
-        position: "absolute",
-        top: 20,
-        left: 20,
-        background: "#fff",
-        padding: 16,
-        zIndex: 100,
-        borderRadius: 8,
-        boxShadow: "0 2px 10px #0002",
-        minWidth: 220
-      }}
-    >
-      <b>Map Layers</b>
+    <div className="sidebar-container">
+      <div className="sidebar-title">Map Layers</div>
+     
       <div>
-        {layers.map((layer) => (
-          <div key={layer.id} style={{ margin: "8px 0" }}>
+        {layers.map(layer => (
+          <div
+            key={layer.id}
+            className={
+              "layer-row" + (visibleLayers.includes(layer.id) ? " active" : "")
+            }
+          >
             <input
               type="checkbox"
               checked={visibleLayers.includes(layer.id)}
               onChange={() => onToggle(layer.id)}
               id={`layer-toggle-${layer.id}`}
+              className="layer-checkbox"
             />
-            <label
-              htmlFor={`layer-toggle-${layer.id}`}
-              style={{
-                marginLeft: 8,
-                color: layer.color,
-                fontWeight: 600,
-                cursor: "pointer"
-              }}
-            >
-              {layer.label}
+            <label htmlFor={`layer-toggle-${layer.id}`} className="layer-label">
+              {getLegendSymbol(layer)}
+              <span className="layer-text">{layer.label}</span>
             </label>
-            {/* Heatmap toggle only for specified store layers */}
-            {HEATMAP_LAYERS.includes(layer.id) && (
-              <label style={{ marginLeft: 14, fontWeight: 400 }}>
-                <input
-                  type="checkbox"
-                  checked={visibleHeatmaps.includes(layer.id)}
-                  onChange={() => onToggleHeatmap(layer.id)}
-                  style={{ marginRight: 4 }}
-                />
-                <span style={{ fontSize: 13, color: "#555" }}>Heatmap</span>
-              </label>
-            )}
-          </div>
-        ))}
-      </div>
-      <hr />
-      <b>Legend</b>
-      <div style={{ marginBottom: 10 }}>
-        {/* Custom symbology for city limits and neighbourhoods */}
-        {customLegend.map((item) => (
-          <div
-            key={item.id}
-            style={{ display: "flex", alignItems: "center", marginTop: 4 }}
-          >
-            {item.render}
-            <span>{item.label}</span>
-          </div>
-        ))}
-        {/* Symbology for point layers */}
-        {layers.map((layer) => (
-          <div
-            key={layer.id}
-            style={{ display: "flex", alignItems: "center", marginTop: 4 }}
-          >
-            <span
-              style={{
-                display: "inline-block",
-                width: 16,
-                height: 16,
-                background: layer.color,
-                borderRadius: "50%",
-                marginRight: 8,
-                border: "2px solid #fff"
-              }}
-            ></span>
-            {layer.label}
           </div>
         ))}
       </div>

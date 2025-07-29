@@ -1,0 +1,161 @@
+.sidebar-container {
+  position: absolute;
+  top: 40px;
+  left: 0px;
+  height: 83vh;
+ 
+  margin-left: 13px;
+  padding: 20px;
+  z-index: 100;
+  border-radius: 12px;
+  box-shadow: 0 2px 18px #0002;
+  min-width: 260px;
+  max-width: 330px;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+   background: linear-gradient(135deg, #f7f8fa 85%, #e3ecf8 100%);
+  box-shadow: 0 8px 32px #22485722; /* Deeper shadow, national portal style */
+
+  border: 1.5px solid #d4e2ef;
+}
+
+
+
+/* Slightly more space above sidebar, so title feels anchored */
+.sidebar-container {
+  top: 40px ; 
+}
+.sidebar-title {
+  font-weight: 700;
+  font-size: 20px;
+  margin-bottom: 14px;
+  color: #224857;
+  letter-spacing: 0.5px;
+}
+
+.custom-legend {
+  margin-bottom: 12px;
+}
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.legend-label {
+  font-weight: 600;
+  font-size: 15px;
+  color: #565a60;
+}
+
+.legend-symbol {
+  margin-right: 10px;
+  vertical-align: middle;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* Custom legend symbols */
+.citylimits-line {
+  width: 28px;
+  height: 0;
+  border-top: 5px solid #114b07;
+}
+
+.neighbourhoods-fill {
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(135deg, #ffadad 0%, #ffd6a5 35%, #9bf6ff 70%, #bdb2ff 100%);
+  border: 2px solid #444;
+  border-radius: 4px;
+}
+
+.circle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #444;
+}
+
+.square {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #444;
+}
+
+.triangle {
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 16px solid #888; /* color overridden in style */
+}
+
+.star {
+  font-size: 18px;
+  line-height: 16px;
+}
+
+.hexagon {
+  vertical-align: middle;
+}
+
+.custom-image {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  border-radius: 2px;
+  border: 2px solid #444;
+  background: #fff;
+}
+
+/* Layer row (toggle) styles */
+.layer-row {
+  display: flex;
+  align-items: center;
+  margin: 10px 0;
+  padding: 6px 0;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.layer-row.active {
+  background: #edf7fa;
+}
+
+.layer-checkbox {
+  accent-color: #246;
+}
+
+.layer-label {
+  display: flex;
+  align-items: center;
+  margin-left: 10px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.layer-text {
+  color: #8d95a5;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.1px;
+}
+
+.layer-row.active .layer-text {
+  color: #0a2238;
+}
+.sidebar-container {
+background: linear-gradient(120deg, #e4e9ef 92%, #cfd8e3 100%) !important;
+  border: 1.7px solid #b6cee4 !important;
+  box-shadow: 0 4px 22px #22485714;
+}
+
+.sidebar-title {
+  color: #17436b !important;
+  font-size: 1.28rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  letter-spacing: 0.7px;
+  text-shadow: 0 1.2px 0 #eaf2fa;
+}
