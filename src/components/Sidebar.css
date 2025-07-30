@@ -2,20 +2,96 @@
   position: absolute;
   top: 40px;
   left: 0px;
-  height: 83vh;
+  height: 83.5vh;
  
   margin-left: 13px;
   padding: 20px;
   z-index: 100;
-  border-radius: 12px;
-  box-shadow: 0 2px 18px #0002;
+ 
   min-width: 260px;
   max-width: 330px;
   font-family: 'Inter', 'Segoe UI', sans-serif;
    background: linear-gradient(135deg, #f7f8fa 85%, #e3ecf8 100%);
-  box-shadow: 0 8px 32px #22485722; /* Deeper shadow, national portal style */
 
-  border: 1.5px solid #d4e2ef;
+  border: none;
+}
+
+
+.sidebar-heatmap-title {
+  font-size: 1.16rem;
+  font-weight: 700;
+  color: #17436b;
+  text-align: center;
+  margin-bottom: 6px;
+  margin-top: 2px;
+}
+.sidebar-heatmap-desc {
+  font-size: 0.95rem;
+  color: #426285;
+  text-align: center;
+  margin-bottom: 12px;
+}
+.heatmap-btn-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 9px;
+}
+.heatmap-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #f5faff;
+  border: 1.4px solid #b6cee4;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px #22485709;
+  cursor: pointer;
+  padding: 7px 7px 6px 7px;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  text-align: center;
+  min-width: 0;
+}
+.heatmap-btn.active,
+.heatmap-btn:hover {
+  border-color: #17436b;
+  background: #e8f3fa;
+  box-shadow: 0 4px 18px #22485711;
+}
+.heatmap-row:hover, .heatmap-row:has(input:checked) {
+  background: #f2f6fa;
+}
+.heatmap-row {
+  padding: 5px 0;
+  border-radius: 7px;
+  transition: background 0.16s;
+}
+.heatmap-label, .heatmap-desc {
+  white-space: normal;
+  word-break: break-word;
+  max-width: 180px; /* or whatever fits inside your sidebar */
+}
+
+.sidebar-heatmap-list .heatmap-btn-grid {
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.heatmap-icon {
+ min-width: 20px;
+  min-height: 20px;
+}
+.heatmap-label {
+  font-size: 1.04rem;
+  font-weight: 700;
+  color: #184573;
+  margin-bottom: 0px;
+}
+.heatmap-desc {
+  font-size: 0.88rem;
+  color: #426285;
+  font-weight: 500;
+  margin-top: 0px;
+  margin-bottom: -3px;
+  line-height: 1.18;
 }
 
 
@@ -23,6 +99,7 @@
 /* Slightly more space above sidebar, so title feels anchored */
 .sidebar-container {
   top: 40px ; 
+  
 }
 .sidebar-title {
   font-weight: 700;
@@ -134,7 +211,9 @@
   cursor: pointer;
   width: 100%;
 }
-
+.sidebar-title {
+  text-align: center; /* centers the title */
+}
 .layer-text {
   color: #8d95a5;
   font-weight: 600;
@@ -147,8 +226,8 @@
 }
 .sidebar-container {
 background: linear-gradient(120deg, #e4e9ef 92%, #cfd8e3 100%) !important;
-  border: 1.7px solid #b6cee4 !important;
-  box-shadow: 0 4px 22px #22485714;
+
+
 }
 
 .sidebar-title {
@@ -158,4 +237,119 @@ background: linear-gradient(120deg, #e4e9ef 92%, #cfd8e3 100%) !important;
   margin-bottom: 12px;
   letter-spacing: 0.7px;
   text-shadow: 0 1.2px 0 #eaf2fa;
+}
+
+
+/* Sidebar toggle button (top-left, floating, always visible) */
+.sidebar-toggle-btn {
+  position: fixed;
+  top: 44px;
+  left: 16px;
+  z-index: 120;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+   border: none; 
+  
+  box-shadow: 0 4px 18px #22485711;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.sidebar-toggle-btn:hover {
+  background: #e4e9ef;
+  box-shadow: 0 8px 28px #22485722;
+}
+.sidebar-toggle-icon {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hide sidebar */
+.sidebar-hidden {
+  transform: translateX(-115%);
+  opacity: 0.2;
+  pointer-events: none;
+  transition: transform 0.28s cubic-bezier(.77,0,.18,1), opacity 0.18s;
+}
+.sidebar-container {
+  transition: transform 0.28s cubic-bezier(.77,0,.18,1), opacity 0.18s;
+}
+
+/* Mode Selector Row */
+.sidebar-mode-row {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: space-between;
+  background: #e4e9ef;
+  border-radius: 11px;
+  padding: 7px 8px 5px 8px;
+  margin-top: 22px;
+  box-shadow: 0 1px 6px #22485709;
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 12px;
+}
+
+.mode-radio {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 4px 4px;
+  border-radius: 8px;
+  border: none;
+  font-size: 15px;
+  background: none;
+  transition: background 0.18s;
+}
+
+
+.mode-radio.active, .mode-radio:has(input:checked) {
+  background: #cfd8e3;
+}
+.mode-radio input[type="radio"] {
+  display: none;
+}
+.mode-label {
+  font-weight: 600;
+  font-size: 9px;
+  color: #224857;
+  user-select: none;
+  margin-left: 2px;
+}
+.icon-holder {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1px;
+}
+
+/* For empty sidebars in other modes */
+.sidebar-heatmap-empty,
+.sidebar-demographics-empty {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a3b3c5;
+  font-size: 1.1rem;
+
+}
+
+.heatmap-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #1976d2;
+  margin-top: 2px;
 }

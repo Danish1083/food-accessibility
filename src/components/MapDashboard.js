@@ -17,6 +17,7 @@ const BASEMAPS = [
   { label: "Dark", style: "mapbox://styles/mapbox/dark-v11" },
 ];
 
+
 const LAYERS = [
   {
     id: "citylimits",
@@ -119,7 +120,45 @@ export default function MapDashboard() {
   const mapContainerRef = useRef(null);
   const [visibleLayers, setVisibleLayers] = useState(LAYERS.map((l) => l.id));
   const [basemap, setBasemap] = useState(BASEMAPS[0].style);
+const HEATMAP_CATEGORIES = [
+  {
+    id: "convenience-stores",
+    label: "Convenience Stores",
+    color: "#f1c40f",
+    shape: "circle",
+    desc: "Show density of convenience stores.",
+  },
+  {
+    id: "grocery-stores",
+    label: "Grocery Stores",
+    color: "#3498db",
+    shape: "square",
+    desc: "Show density of grocery stores.",
+  },
+  {
+    id: "restaurants",
+    label: "Restaurants",
+    color: "#27ae60",
+    shape: "triangle",
+    desc: "Show density of restaurants.",
+  },
+  {
+    id: "emergency-food",
+    label: "Emergency Food",
+    color: "#e74c3c",
+    shape: "star",
+    desc: "Show density of emergency food locations.",
+  },
+  {
+    id: "speciality-stores",
+    label: "Speciality Stores",
+    color: "#9b59b6",
+    shape: "hexagon",
+    desc: "Show density of speciality food stores.",
+  },
+];
 
+const [activeHeatmaps, setActiveHeatmaps] = useState([]);
   // Toggle layer visibility
   const handleToggleLayer = (layerId) => {
     setVisibleLayers((prev) =>
@@ -239,8 +278,8 @@ export default function MapDashboard() {
         map.on("click", "neighbourhoods-fill", (e) => {
           const feature = e.features[0];
           const properties = feature.properties;
-
-          const name = properties["NSA_NA"]; // Access the correct property
+console.log("Neighbourhood properties:", properties);
+          const name = properties["Name"]; // Access the correct property
 
           const popupContent = `
             <div style="font-family: Arial, sans-serif;">
@@ -409,7 +448,59 @@ export default function MapDashboard() {
     });
 
   }, [visibleLayers]);
+useEffect(() => {
+  const map = mapRef.current;
+  if (!map) return;
 
+  // Remove any heatmap layers that are not active
+  HEATMAP_CATEGORIES.forEach(layer => {
+    const heatmapId = layer.id + "-heatmap";
+    if (map.getLayer(heatmapId) && !activeHeatmaps.includes(layer.id)) {
+      map.removeLayer(heatmapId);
+      // do NOT remove the source; just the layer
+    }
+  });
+
+  // Add or show heatmap layers for each activeHeatmap
+  activeHeatmaps.forEach(layerId => {
+    const heatmapId = layerId + "-heatmap";
+    // Add heatmap layer if not already present
+    if (!map.getLayer(heatmapId)) {
+      map.addLayer({
+        id: heatmapId,
+        type: "heatmap",
+        source: layerId, // reuse the existing GeoJSON source for the points!
+        maxzoom: 16,
+        paint: {
+          // You can tweak these to adjust heatmap style
+          "heatmap-weight": [
+            "interpolate",
+            ["linear"],
+            ["get", "weight"], // Use "weight" property if you have one; else set all to 1
+            0, 0,
+            6, 1
+          ],
+          "heatmap-intensity": 0.6,
+          "heatmap-radius": 28,
+          "heatmap-opacity": 0.55,
+          "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0, "rgba(0,0,0,0)",
+            0.15, layerId === "convenience-stores" ? "#f1c40f" :
+                  layerId === "grocery-stores" ? "#3498db" :
+                  layerId === "restaurants" ? "#27ae60" :
+                  "#e74c3c",
+            0.4, "#feb24c",
+            0.7, "#fd8d3c",
+            1, "#b10026"
+          ]
+        }
+      });
+    }
+  });
+}, [activeHeatmaps]);
 return (
   <div className="map-dashboard-root">
 <div className="map-dashboard-title">
@@ -417,11 +508,14 @@ return (
 </div>
 
     {/* Sidebar for layer toggles */}
-    <Sidebar
-      layers={LAYERS}
-      visibleLayers={visibleLayers}
-      onToggle={handleToggleLayer}
-    />
+  <Sidebar
+  layers={LAYERS}
+  visibleLayers={visibleLayers}
+  onToggle={handleToggleLayer}
+  heatmapCategories={HEATMAP_CATEGORIES}
+  activeHeatmaps={activeHeatmaps}
+  onHeatmapChange={setActiveHeatmaps}
+/>
 
     {/* Basemap Switcher */}
     <div className="map-dashboard-basemap-switcher">
