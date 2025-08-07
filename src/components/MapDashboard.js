@@ -5,7 +5,6 @@ import Sidebar from "./Sidebar";
 import "mapbox-gl/dist/mapbox-gl.css";
 import "./MapDashboard.css";
 
-
 mapboxgl.accessToken =
   "pk.eyJ1IjoiZGFuaXNoMTA4MyIsImEiOiJjbHh0eDJhOGYwYm1hMmlzYXBvNmhsdXk2In0.7-j8U59ERuj0A4oURgIh-g";
 
@@ -17,61 +16,58 @@ const BASEMAPS = [
   { label: "Dark", style: "mapbox://styles/mapbox/dark-v11" },
 ];
 
-
 const LAYERS = [
   {
     id: "citylimits",
-    label: "City Limits"
-    // no shape, no color, no imagePath
+    label: "City Limits",
   },
   {
     id: "neighbourhoods",
-    label: "Neighbourhoods"
-    // no shape, no color, no imagePath
+    label: "Neighbourhoods",
   },
   {
     id: "convenience-stores",
     label: "Convenience Stores",
     url: "https://7ab5756294d9.ngrok-free.app/api/geo/conveniencestores",
     color: "#f1c40f",
-    shape: "circle", // Built-in circle shape
+    shape: "circle",
   },
   {
     id: "grocery-stores",
     label: "Grocery Stores",
     url: "https://7ab5756294d9.ngrok-free.app/api/geo/grocerystores",
     color: "#3498db",
-    shape: "square", // Built-in square shape
+    shape: "square",
   },
   {
     id: "restaurants",
     label: "Restaurants",
     url: "https://7ab5756294d9.ngrok-free.app/api/geo/restaurants",
     color: "#27ae60",
-    shape: "triangle", // Built-in triangle shape
+    shape: "triangle",
   },
   {
     id: "emergency-food",
     label: "Emergency Food",
     url: "https://7ab5756294d9.ngrok-free.app/api/geo/emergencyfood",
     color: "#e74c3c",
-    shape: "star", // Built-in star shape
+    shape: "star",
   },
   {
     id: "speciality-stores",
     label: "Speciality Stores",
     url: "https://7ab5756294d9.ngrok-free.app/api/geo/specialitystores",
     color: "#9b59b6",
-    shape: "hexagon", // Built-in hexagon shape
+    shape: "hexagon",
   },
   {
     id: "transitstops",
     label: "Transit Stops",
     url: "https://7ab5756294d9.ngrok-free.app/api/geo/transitstops",
     color: "#ff0080",
-    shape: "custom-image", // Custom image
-    imagePath: "./assets/bus-icon.png", // Path to your bus image
-  }
+    shape: "custom-image",
+    imagePath: "./assets/bus-icon.png",
+  },
 ];
 
 // Function to create SVG shapes as data URLs
@@ -120,45 +116,46 @@ export default function MapDashboard() {
   const mapContainerRef = useRef(null);
   const [visibleLayers, setVisibleLayers] = useState(LAYERS.map((l) => l.id));
   const [basemap, setBasemap] = useState(BASEMAPS[0].style);
-const HEATMAP_CATEGORIES = [
-  {
-    id: "convenience-stores",
-    label: "Convenience Stores",
-    color: "#f1c40f",
-    shape: "circle",
-    desc: "Show density of convenience stores.",
-  },
-  {
-    id: "grocery-stores",
-    label: "Grocery Stores",
-    color: "#3498db",
-    shape: "square",
-    desc: "Show density of grocery stores.",
-  },
-  {
-    id: "restaurants",
-    label: "Restaurants",
-    color: "#27ae60",
-    shape: "triangle",
-    desc: "Show density of restaurants.",
-  },
-  {
-    id: "emergency-food",
-    label: "Emergency Food",
-    color: "#e74c3c",
-    shape: "star",
-    desc: "Show density of emergency food locations.",
-  },
-  {
-    id: "speciality-stores",
-    label: "Speciality Stores",
-    color: "#9b59b6",
-    shape: "hexagon",
-    desc: "Show density of speciality food stores.",
-  },
-];
+  const [error, setError] = useState(null);
+  const HEATMAP_CATEGORIES = [
+    {
+      id: "convenience-stores",
+      label: "Convenience Stores",
+      color: "#f1c40f",
+      shape: "circle",
+      desc: "Show density of convenience stores.",
+    },
+    {
+      id: "grocery-stores",
+      label: "Grocery Stores",
+      color: "#3498db",
+      shape: "square",
+      desc: "Show density of grocery stores.",
+    },
+    {
+      id: "restaurants",
+      label: "Restaurants",
+      color: "#27ae60",
+      shape: "triangle",
+      desc: "Show density of restaurants.",
+    },
+    {
+      id: "emergency-food",
+      label: "Emergency Food",
+      color: "#e74c3c",
+      shape: "star",
+      desc: "Show density of emergency food locations.",
+    },
+    {
+      id: "speciality-stores",
+      label: "Speciality Stores",
+      color: "#9b59b6",
+      shape: "hexagon",
+      desc: "Show density of speciality food stores.",
+    },
+  ];
+  const [activeHeatmaps, setActiveHeatmaps] = useState([]);
 
-const [activeHeatmaps, setActiveHeatmaps] = useState([]);
   // Toggle layer visibility
   const handleToggleLayer = (layerId) => {
     setVisibleLayers((prev) =>
@@ -191,13 +188,11 @@ const [activeHeatmaps, setActiveHeatmaps] = useState([]);
         for (let layer of LAYERS) {
           if (layer.shape === 'custom-image' && layer.imagePath) {
             try {
-              // Load image from local path
               const image = new Image();
               image.crossOrigin = 'anonymous';
               
               await new Promise((resolve, reject) => {
                 image.onload = () => {
-                  // Add image to map
                   if (!map.hasImage(layer.id + '-icon')) {
                     map.addImage(layer.id + '-icon', image);
                   }
@@ -211,7 +206,6 @@ const [activeHeatmaps, setActiveHeatmaps] = useState([]);
               console.log(`Make sure your image is in the public folder: public/assets/bus-icon.png`);
             }
           } else if (layer.shape && layer.shape !== 'circle') {
-            // Create SVG shapes for built-in shapes
             try {
               const svgDataUrl = createSVGShape(layer.shape, layer.color);
               const image = new Image();
@@ -233,12 +227,14 @@ const [activeHeatmaps, setActiveHeatmaps] = useState([]);
         }
       };
 
-      // Load all custom images and shapes
       await loadCustomImages();
 
       // 1. City Limits
       try {
         const cityResponse = await axios.get("https://7ab5756294d9.ngrok-free.app/api/geo/citylimits");
+        if (!cityResponse.data) {
+          throw new Error("City Limits data is empty");
+        }
         map.addSource("citylimits", { type: "geojson", data: cityResponse.data });
         map.addLayer({
           id: "citylimits-line",
@@ -247,18 +243,24 @@ const [activeHeatmaps, setActiveHeatmaps] = useState([]);
           paint: {
             "line-color": "#114b07",
             "line-width": 3,
-            "line-opacity": 1
+            "line-opacity": 1,
           },
-          layout: { visibility: visibleLayers.includes("citylimits") ? "visible" : "none" }
+          layout: { visibility: visibleLayers.includes("citylimits") ? "visible" : "none" },
         });
-      } catch (error) { 
-        console.error("Error loading City Limits:", error); 
+      } catch (error) {
+        console.error("Error loading City Limits:", error);
+        setError("Failed to load City Limits data");
       }
 
       // 2. Neighbourhoods
       try {
         const hoodResponse = await axios.get("https://7ab5756294d9.ngrok-free.app/api/geo/neighbourhoods");
-        hoodResponse.data.features.forEach(f => {
+        const features = hoodResponse.data?.features || [];
+        if (!Array.isArray(features)) {
+          throw new Error("Neighbourhoods data is not a valid GeoJSON FeatureCollection");
+        }
+        features.forEach((f) => {
+          f.properties = f.properties || {};
           f.properties.color = "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
         });
         map.addSource("neighbourhoods", { type: "geojson", data: hoodResponse.data });
@@ -269,22 +271,21 @@ const [activeHeatmaps, setActiveHeatmaps] = useState([]);
           paint: {
             "fill-color": ["get", "color"],
             "fill-opacity": 0.30,
-            "fill-outline-color": "black"
+            "fill-outline-color": "black",
           },
-          layout: { visibility: visibleLayers.includes("neighbourhoods") ? "visible" : "none" }
+          layout: { visibility: visibleLayers.includes("neighbourhoods") ? "visible" : "none" },
         });
 
         // Add popup functionality for neighbourhoods
         map.on("click", "neighbourhoods-fill", (e) => {
           const feature = e.features[0];
-          const properties = feature.properties;
-console.log("Neighbourhood properties:", properties);
-          const name = properties["Name"]; // Access the correct property
+          const properties = feature.properties || {};
+          const name = properties["Name"] || "Unknown";
 
           const popupContent = `
             <div style="font-family: Arial, sans-serif;">
               <h4 style="margin: 0 0 8px 0; color: #333;">Neighbourhood</h4>
-              <p style="margin: 2px 0;"><strong>Name:</strong> ${name || "N/A"}</p>
+              <p style="margin: 2px 0;"><strong>Name:</strong> ${name}</p>
             </div>
           `;
 
@@ -294,7 +295,6 @@ console.log("Neighbourhood properties:", properties);
             .addTo(map);
         });
 
-        // Change cursor on hover for neighbourhoods
         map.on("mouseenter", "neighbourhoods-fill", () => {
           map.getCanvas().style.cursor = "pointer";
         });
@@ -302,8 +302,9 @@ console.log("Neighbourhood properties:", properties);
         map.on("mouseleave", "neighbourhoods-fill", () => {
           map.getCanvas().style.cursor = "";
         });
-      } catch (error) { 
-        console.error("Error loading Neighbourhoods:", error); 
+      } catch (error) {
+        console.error("Error loading Neighbourhoods:", error);
+        setError("Failed to load Neighbourhoods data");
       }
 
       // 3. Point Layers with Custom Shapes
@@ -312,13 +313,14 @@ console.log("Neighbourhood properties:", properties);
         
         try {
           const response = await axios.get(layer.url);
+          if (!response.data) {
+            throw new Error(`${layer.label} data is empty`);
+          }
           map.addSource(layer.id, { type: "geojson", data: response.data });
           
           const layerId = layer.id + "-layer";
           
-          // Determine layer type and styling based on shape
           if (layer.shape === 'custom-image') {
-            // Use symbol layer for custom images
             map.addLayer({
               id: layerId,
               type: "symbol",
@@ -327,11 +329,10 @@ console.log("Neighbourhood properties:", properties);
                 "icon-image": layer.id + '-icon',
                 "icon-size": 0.07,
                 "icon-allow-overlap": true,
-                visibility: visibleLayers.includes(layer.id) ? "visible" : "none",
+                visibility: visibleLayers.includes(layer.id) ? "visible" : " none",
               },
             });
           } else if (layer.shape && layer.shape !== 'circle') {
-            // Use symbol layer for custom SVG shapes
             map.addLayer({
               id: layerId,
               type: "symbol",
@@ -344,7 +345,6 @@ console.log("Neighbourhood properties:", properties);
               },
             });
           } else {
-            // Use circle layer for default circles
             map.addLayer({
               id: layerId,
               type: "circle",
@@ -361,17 +361,14 @@ console.log("Neighbourhood properties:", properties);
             });
           }
 
-          // Add popup functionality for each point layer
           map.on("click", layerId, (e) => {
             const feature = e.features[0];
             const coordinates = feature.geometry.coordinates.slice();
-            const properties = feature.properties;
+            const properties = feature.properties || {};
             
-            // Create popup content based on available properties
             let popupContent = `<div style="font-family: Arial, sans-serif;">`;
             popupContent += `<h4 style="margin: 0 0 8px 0; color: ${layer.color};">${layer.label}</h4>`;
             
-            // Display all properties
             Object.keys(properties).forEach(key => {
               if (properties[key] !== null && properties[key] !== undefined) {
                 popupContent += `<p style="margin: 2px 0;"><strong>${key.replace(/_/g, ' ')}:</strong> ${properties[key]}</p>`;
@@ -379,9 +376,6 @@ console.log("Neighbourhood properties:", properties);
             });
             popupContent += `</div>`;
 
-            // Ensure that if the map is zoomed out such that multiple
-            // copies of the feature are visible, the popup appears
-            // over the copy being pointed to.
             while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
               coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
             }
@@ -392,7 +386,6 @@ console.log("Neighbourhood properties:", properties);
               .addTo(map);
           });
 
-          // Change cursor on hover
           map.on("mouseenter", layerId, () => {
             map.getCanvas().style.cursor = "pointer";
           });
@@ -403,19 +396,19 @@ console.log("Neighbourhood properties:", properties);
 
         } catch (error) {
           console.error(`Error loading ${layer.label}:`, error);
+          setError(`Failed to load ${layer.label} data`);
         }
       }
     });
 
     return () => map.remove();
-  }, [basemap]); // re-run only if basemap changes
+  }, [basemap]);
 
   // Toggle visibility when visibleLayers changes
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
-    // Toggle citylimits
     if (map.getLayer("citylimits-line")) {
       map.setLayoutProperty(
         "citylimits-line",
@@ -424,7 +417,6 @@ console.log("Neighbourhood properties:", properties);
       );
     }
 
-    // Toggle neighbourhoods
     if (map.getLayer("neighbourhoods-fill")) {
       map.setLayoutProperty(
         "neighbourhoods-fill",
@@ -433,11 +425,9 @@ console.log("Neighbourhood properties:", properties);
       );
     }
 
-    // Toggle all point layers
     LAYERS.forEach((layer) => {
       if (["citylimits", "neighbourhoods"].includes(layer.id)) return;
       
-      // Toggle regular GeoJSON layers
       if (map.getLayer(layer.id + "-layer")) {
         map.setLayoutProperty(
           layer.id + "-layer",
@@ -446,107 +436,98 @@ console.log("Neighbourhood properties:", properties);
         );
       }
     });
-
   }, [visibleLayers]);
-useEffect(() => {
-  const map = mapRef.current;
-  if (!map) return;
 
-  // Remove any heatmap layers that are not active
-  HEATMAP_CATEGORIES.forEach(layer => {
-    const heatmapId = layer.id + "-heatmap";
-    if (map.getLayer(heatmapId) && !activeHeatmaps.includes(layer.id)) {
-      map.removeLayer(heatmapId);
-      // do NOT remove the source; just the layer
-    }
-  });
+  // Handle heatmap layers
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
 
-  // Add or show heatmap layers for each activeHeatmap
-  activeHeatmaps.forEach(layerId => {
-    const heatmapId = layerId + "-heatmap";
-    // Add heatmap layer if not already present
-    if (!map.getLayer(heatmapId)) {
-      map.addLayer({
-        id: heatmapId,
-        type: "heatmap",
-        source: layerId, // reuse the existing GeoJSON source for the points!
-        maxzoom: 16,
-        paint: {
-          // You can tweak these to adjust heatmap style
-          "heatmap-weight": [
-            "interpolate",
-            ["linear"],
-            ["get", "weight"], // Use "weight" property if you have one; else set all to 1
-            0, 0,
-            6, 1
-          ],
-          "heatmap-intensity": 0.6,
-          "heatmap-radius": 28,
-          "heatmap-opacity": 0.55,
-          "heatmap-color": [
-            "interpolate",
-            ["linear"],
-            ["heatmap-density"],
-            0, "rgba(0,0,0,0)",
-            0.15, layerId === "convenience-stores" ? "#f1c40f" :
-                  layerId === "grocery-stores" ? "#3498db" :
-                  layerId === "restaurants" ? "#27ae60" :
-                  "#e74c3c",
-            0.4, "#feb24c",
-            0.7, "#fd8d3c",
-            1, "#b10026"
-          ]
-        }
-      });
-    }
-  });
-}, [activeHeatmaps]);
-return (
-  <div className="map-dashboard-root">
-<div className="map-dashboard-title">
-  Food Accessibility in Regina <span role="img" aria-label="Canada">🇨🇦</span>
-</div>
+    HEATMAP_CATEGORIES.forEach(layer => {
+      const heatmapId = layer.id + "-heatmap";
+      if (map.getLayer(heatmapId) && !activeHeatmaps.includes(layer.id)) {
+        map.removeLayer(heatmapId);
+      }
+    });
 
-    {/* Sidebar for layer toggles */}
-  <Sidebar
-  layers={LAYERS}
-  visibleLayers={visibleLayers}
-  onToggle={handleToggleLayer}
-  heatmapCategories={HEATMAP_CATEGORIES}
-  activeHeatmaps={activeHeatmaps}
-  onHeatmapChange={setActiveHeatmaps}
-/>
+    activeHeatmaps.forEach(layerId => {
+      const heatmapId = layerId + "-heatmap";
+      if (!map.getLayer(heatmapId)) {
+        map.addLayer({
+          id: heatmapId,
+          type: "heatmap",
+          source: layerId,
+          maxzoom: 16,
+          paint: {
+            "heatmap-weight": [
+              "interpolate",
+              ["linear"],
+              ["get", "weight"],
+              0, 0,
+              6, 1,
+            ],
+            "heatmap-intensity": 0.6,
+            "heatmap-radius": 28,
+            "heatmap-opacity": 0.55,
+            "heatmap-color": [
+              "interpolate",
+              ["linear"],
+              ["heatmap-density"],
+              0, "rgba(0,0,0,0)",
+              0.15, layerId === "convenience-stores" ? "#f1c40f" :
+                    layerId === "grocery-stores" ? "#3498db" :
+                    layerId === "restaurants" ? "#27ae60" :
+                    "#e74c3c",
+              0.4, "#feb24c",
+              0.7, "#fd8d3c",
+              1, "#b10026",
+            ],
+          },
+        });
+      }
+    });
+  }, [activeHeatmaps]);
 
-    {/* Basemap Switcher */}
-    <div className="map-dashboard-basemap-switcher">
-      <span style={{ fontWeight: "bold" }}>Basemap: </span>
-      {BASEMAPS.map((b) => (
-        <button
-          key={b.style}
-          onClick={() => handleBasemapChange(b.style)}
-          style={{
-            margin: "0 4px",
-            padding: "4px 10px",
-            background: basemap === b.style ? "#1976d2" : "#eee",
-            color: basemap === b.style ? "#fff" : "#222",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontWeight: basemap === b.style ? "bold" : "normal",
-          }}
-        >
-          {b.label}
-        </button>
-      ))}
+  return (
+    <div className="map-dashboard-root">
+      {error && <div style={{ color: 'red', padding: '10px' }}>{error}</div>}
+      <div className="map-dashboard-title">
+        Food Accessibility in Regina <span role="img" aria-label="Canada">🇨🇦</span>
+      </div>
+      <Sidebar
+        layers={LAYERS}
+        visibleLayers={visibleLayers}
+        onToggle={handleToggleLayer}
+        heatmapCategories={HEATMAP_CATEGORIES}
+        activeHeatmaps={activeHeatmaps}
+        onHeatmapChange={setActiveHeatmaps}
+      />
+      <div className="map-dashboard-basemap-switcher">
+        <span style={{ fontWeight: "bold" }}>Basemap: </span>
+        {BASEMAPS.map((b) => (
+          <button
+            key={b.style}
+            onClick={() => handleBasemapChange(b.style)}
+            style={{
+              margin: "0 4px",
+              padding: "4px 10px",
+              background: basemap === b.style ? "#1976d2" : "#eee",
+              color: basemap === b.style ? "#fff" : "#222",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontWeight: basemap === b.style ? "bold" : "normal",
+            }}
+          >
+            {b.label}
+          </button>
+        ))}
+      </div>
+      <div
+        id="map-container"
+        ref={mapContainerRef}
+        className="map-dashboard-map-container"
+      />
     </div>
-
-    {/* Map container */}
-    <div
-      id="map-container"
-      ref={mapContainerRef}
-      className="map-dashboard-map-container"
-    />
-  </div>
-);
-
+  );
 }
