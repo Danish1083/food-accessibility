@@ -32,42 +32,42 @@ const LAYERS = [
   {
     id: "convenience-stores",
     label: "Convenience Stores",
-    url: "http://localhost:4000/api/geo/conveniencestores",
+    url: "https://7ab5756294d9.ngrok-free.app/api/geo/conveniencestores",
     color: "#f1c40f",
     shape: "circle", // Built-in circle shape
   },
   {
     id: "grocery-stores",
     label: "Grocery Stores",
-    url: "http://localhost:4000/api/geo/grocerystores",
+    url: "https://7ab5756294d9.ngrok-free.app/api/geo/grocerystores",
     color: "#3498db",
     shape: "square", // Built-in square shape
   },
   {
     id: "restaurants",
     label: "Restaurants",
-    url: "http://localhost:4000/api/geo/restaurants",
+    url: "https://7ab5756294d9.ngrok-free.app/api/geo/restaurants",
     color: "#27ae60",
     shape: "triangle", // Built-in triangle shape
   },
   {
     id: "emergency-food",
     label: "Emergency Food",
-    url: "http://localhost:4000/api/geo/emergencyfood",
+    url: "https://7ab5756294d9.ngrok-free.app/api/geo/emergencyfood",
     color: "#e74c3c",
     shape: "star", // Built-in star shape
   },
   {
     id: "speciality-stores",
     label: "Speciality Stores",
-    url: "http://localhost:4000/api/geo/specialitystores",
+    url: "https://7ab5756294d9.ngrok-free.app/api/geo/specialitystores",
     color: "#9b59b6",
     shape: "hexagon", // Built-in hexagon shape
   },
   {
     id: "transitstops",
     label: "Transit Stops",
-    url: "http://localhost:4000/api/geo/transitstops",
+    url: "https://7ab5756294d9.ngrok-free.app/api/geo/transitstops",
     color: "#ff0080",
     shape: "custom-image", // Custom image
     imagePath: "./assets/bus-icon.png", // Path to your bus image
@@ -238,7 +238,7 @@ const [activeHeatmaps, setActiveHeatmaps] = useState([]);
 
       // 1. City Limits
       try {
-        const cityResponse = await axios.get("http://localhost:4000/api/geo/citylimits");
+        const cityResponse = await axios.get("https://7ab5756294d9.ngrok-free.app/api/geo/citylimits");
         map.addSource("citylimits", { type: "geojson", data: cityResponse.data });
         map.addLayer({
           id: "citylimits-line",
@@ -257,7 +257,7 @@ const [activeHeatmaps, setActiveHeatmaps] = useState([]);
 
       // 2. Neighbourhoods
       try {
-        const hoodResponse = await axios.get("http://localhost:4000/api/geo/neighbourhoods");
+        const hoodResponse = await axios.get("https://7ab5756294d9.ngrok-free.app/api/geo/neighbourhoods");
         hoodResponse.data.features.forEach(f => {
           f.properties.color = "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
         });
