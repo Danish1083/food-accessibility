@@ -6,7 +6,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import "./MapDashboard.css";
 
 mapboxgl.accessToken =
-  "pk.eyJ1IjoiZGFuaXNoMTA4MyIsImEiOiJjbHh0eDJhOGYwYm1hMmlzYXBvNmhsdXk2In0.7-j8U59ERuj0A4oURgIh-g";
+  "pk teniendoJ1IjoiZGFuaXNoMTA4MyIsImEiOiJjbHh0eDJhOGYwYm1hMmlzYXBvNmhsdXk2In0.7-j8U59ERuj0A4oURgIh-g";
 
 const BASEMAPS = [
   { label: "Streets", style: "mapbox://styles/mapbox/streets-v12" },
@@ -24,6 +24,7 @@ const LAYERS = [
   {
     id: "neighbourhoods",
     label: "Neighbourhoods",
+    url: "https://7ab5756294d9.ngrok-free.app/api/geo/neighbourhoods",
   },
   {
     id: "convenience-stores",
@@ -66,7 +67,7 @@ const LAYERS = [
     url: "https://7ab5756294d9.ngrok-free.app/api/geo/transitstops",
     color: "#ff0080",
     shape: "custom-image",
-    imagePath: "./assets/bus-icon.png",
+    imagePath: "/assets/bus-icon.png",
   },
 ];
 
@@ -203,7 +204,7 @@ export default function MapDashboard() {
               });
             } catch (error) {
               console.error(`Error loading custom image for ${layer.label}:`, error);
-              console.log(`Make sure your image is in the public folder: public/assets/bus-icon.png`);
+              console.log(`Ensure the image is accessible at: ${layer.imagePath}`);
             }
           } else if (layer.shape && layer.shape !== 'circle') {
             try {
@@ -229,13 +230,45 @@ export default function MapDashboard() {
 
       await loadCustomImages();
 
+      // Helper function to fetch and validate GeoJSON
+      const fetchGeoJSON = async (url, layerLabel) => {
+        try {
+          const response = await axios.get(url, {
+            validateStatus: (status) => status >= 200 && status < 300,
+          });
+          
+          // Log raw response for debugging
+          console.log(`${layerLabel} raw response:`, response.data);
+
+          // Check if response is valid JSON
+          if (typeof response.data !== 'object' || response.data === null) {
+            throw new Error(`${layerLabel} response is not valid JSON`);
+          }
+
+          // Ensure it's a GeoJSON object
+          if (response.data.type !== 'FeatureCollection' && !Array.isArray(response.data.features)) {
+            throw new Error(`${layerLabel} response is not a valid GeoJSON FeatureCollection`);
+          }
+
+          return response.data;
+        } catch (error) {
+          console.error(`Error fetching ${layerLabel}:`, error.message);
+          if (error.response) {
+            console.error(`Response status: ${error.response.status}`);
+            console.error(`Response data:`, error.response.data);
+          }
+          setError(`Failed to load ${layerLabel} data: ${error.message}`);
+          return { type: 'FeatureCollection', features: [] }; // Fallback
+        }
+      };
+
       // 1. City Limits
       try {
-        const cityResponse = await axios.get("https://7ab5756294d9.ngrok-free.app/api/geo/citylimits");
-        if (!cityResponse.data) {
-          throw new Error("City Limits data is empty");
-        }
-        map.addSource("citylimits", { type: "geojson", data: cityResponse.data });
+        const cityData = await fetchGeoJSON(
+          "https://7ab5756294d9.ngrok-free.app/api/geo/citylimits",
+          "City Limits"
+        );
+        map.addSource("citylimits", { type: "geojson", data: cityData });
         map.addLayer({
           id: "citylimits-line",
           type: "line",
@@ -254,16 +287,16 @@ export default function MapDashboard() {
 
       // 2. Neighbourhoods
       try {
-        const hoodResponse = await axios.get("https://7ab5756294d9.ngrok-free.app/api/geo/neighbourhoods");
-        const features = hoodResponse.data?.features || [];
-        if (!Array.isArray(features)) {
-          throw new Error("Neighbourhoods data is not a valid GeoJSON FeatureCollection");
-        }
+        const hoodData = await fetchGeoJSON(
+          "https://7ab5756294d9.ngrok-free.app/api/geo/neighbourhoods",
+          "Neighbourhoods"
+        );
+        const features = hoodData.features || [];
         features.forEach((f) => {
           f.properties = f.properties || {};
           f.properties.color = "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
         });
-        map.addSource("neighbourhoods", { type: "geojson", data: hoodResponse.data });
+        map.addSource("neighbourhoods", { type: "geojson", data: hoodData });
         map.addLayer({
           id: "neighbourhoods-fill",
           type: "fill",
@@ -276,7 +309,6 @@ export default function MapDashboard() {
           layout: { visibility: visibleLayers.includes("neighbourhoods") ? "visible" : "none" },
         });
 
-        // Add popup functionality for neighbourhoods
         map.on("click", "neighbourhoods-fill", (e) => {
           const feature = e.features[0];
           const properties = feature.properties || {};
@@ -312,11 +344,8 @@ export default function MapDashboard() {
         if (["citylimits", "neighbourhoods"].includes(layer.id)) continue;
         
         try {
-          const response = await axios.get(layer.url);
-          if (!response.data) {
-            throw new Error(`${layer.label} data is empty`);
-          }
-          map.addSource(layer.id, { type: "geojson", data: response.data });
+          const layerData = await fetchGeoJSON(layer.url, layer.label);
+          map.addSource(layer.id, { type: "geojson", data: layerData });
           
           const layerId = layer.id + "-layer";
           
@@ -329,7 +358,7 @@ export default function MapDashboard() {
                 "icon-image": layer.id + '-icon',
                 "icon-size": 0.07,
                 "icon-allow-overlap": true,
-                visibility: visibleLayers.includes(layer.id) ? "visible" : " none",
+                visibility: visibleLayers.includes(layer.id) ? "visible" : "none",
               },
             });
           } else if (layer.shape && layer.shape !== 'circle') {
@@ -396,7 +425,7 @@ export default function MapDashboard() {
 
         } catch (error) {
           console.error(`Error loading ${layer.label}:`, error);
-          setError(`Failed to load ${layer.label} data`);
+          setError(`Failed to load ${layer.label} data: ${error.message}`);
         }
       }
     });
