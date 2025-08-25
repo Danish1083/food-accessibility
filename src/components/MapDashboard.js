@@ -468,7 +468,12 @@ export default function MapDashboard() {
               source: layer.id,
               layout: {
                 "icon-image": layer.id + '-shape',
-                "icon-size": 1,
+             "icon-size": 
+  layer.shape === 'star' ? 1.3 :         // bigger star
+  layer.shape === 'triangle' ? 0.9 :     // smaller triangle
+  layer.shape === 'square' ? 0.9 :       // smaller square
+  1,                                     // all others normal
+
                 "icon-allow-overlap": true,
                 visibility: visibleLayers.includes(layer.id) ? "visible" : "none",
               },
@@ -492,50 +497,51 @@ export default function MapDashboard() {
           }
 
           // Add popup functionality for each point layer
-          map.on("click", layerId, (e) => {
-            const feature = e.features[0];
-            const coordinates = feature.geometry.coordinates.slice();
-            const properties = feature.properties;
-            
-            // Customized for transitstops to prioritize name
-            let popupContent = `<div style="font-family: Arial, sans-serif;">`;
-            if (layer.id === "transitstops") {
-              // Log properties to console to debug the available keys
-              console.log(`Transit Stop properties for ${layerId}:`, properties);
-              
-              // Try 'Name' or 'stop_name' as the name property, fallback to 'Unknown Stop'
-              const name = properties["Name"] || properties["stop_name"] || "Unknown Stop";
-              popupContent += `<h4 style="margin: 0 0 8px 0; color: ${layer.color};">${name}</h4>`;
-              
-              // Show all other properties except the name key used
-              Object.keys(properties).forEach(key => {
-                if (key !== "Name" && key !== "stop_name" && properties[key] !== null && properties[key] !== undefined) {
-                  popupContent += `<p style="margin: 2px 0;"><strong>${key.replace(/_/g, ' ')}:</strong> ${properties[key]}</p>`;
-                }
-              });
-            } else {
-              // Original behavior for other layers
-              popupContent += `<h4 style="margin: 0 0 8px 0; color: ${layer.color};">${layer.label}</h4>`;
-              Object.keys(properties).forEach(key => {
-                if (properties[key] !== null && properties[key] !== undefined) {
-                  popupContent += `<p style="margin: 2px 0;"><strong>${key.replace(/_/g, ' ')}:</strong> ${properties[key]}</p>`;
-                }
-              });
-            }
-            popupContent += `</div>`;
+      map.on("click", layerId, (e) => {
+  const feature = e.features[0];
+  const coordinates = feature.geometry.coordinates.slice();
+  const properties = feature.properties;
 
-            // Ensure that if the map is zoomed out such that multiple
-            // copies of the feature are visible, the popup appears
-            // over the copy being pointed to.
-            while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-              coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-            }
+  // helper to read the first available key
+  const getProp = (obj, keys, fallback = "N/A") => {
+    for (const k of keys) {
+      if (obj[k] !== undefined && obj[k] !== null && obj[k] !== "") return obj[k];
+    }
+    return fallback;
+  };
 
-            new mapboxgl.Popup()
-              .setLngLat(coordinates)
-              .setHTML(popupContent)
-              .addTo(map);
-          });
+  let popupContent = `<div style="font-family: Arial, sans-serif;">`;
+
+  if (layer.id === "transitstops") {
+    // Fixed black heading "Transit Stop" and only 3 fields
+    const name = getProp(properties, ["Name", "stop_name", "name"]);
+    const onstreet = getProp(properties, ["onstreet", "on_street", "onStreet"]);
+    const atstreet = getProp(properties, ["atstreet", "at_street", "atStreet"]);
+
+    popupContent += `<h4 style="margin:0 0 8px 0; color:#000;">Transit Stop</h4>`;
+    popupContent += `<p style="margin:2px 0;"><strong>Name:</strong> ${name}</p>`;
+    popupContent += `<p style="margin:2px 0;"><strong>onstreet:</strong> ${onstreet}</p>`;
+    popupContent += `<p style="margin:2px 0;"><strong>atstreet:</strong> ${atstreet}</p>`;
+  } else {
+    // For all other store layers: only Name & Address
+    const name = getProp(properties, ["Name", "name", "store_name", "stop_name"]);
+    const address = getProp(properties, ["Address", "address", "street_address", "addr", "Street", "street"]);
+
+    popupContent += `<h4 style="margin:0 0 8px 0; color:#000;">${layer.label}</h4>`;
+    popupContent += `<p style="margin:2px 0;"><strong>Name:</strong> ${name}</p>`;
+    popupContent += `<p style="margin:2px 0;"><strong>Address:</strong> ${address}</p>`;
+  }
+
+  popupContent += `</div>`;
+
+  // keep popup over the copy being clicked
+  while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+    coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+  }
+
+  new mapboxgl.Popup().setLngLat(coordinates).setHTML(popupContent).addTo(map);
+});
+
 
           // Change cursor on hover
           map.on("mouseenter", layerId, () => {

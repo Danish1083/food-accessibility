@@ -55,37 +55,94 @@ const [activeHeatmap, setActiveHeatmap] = useState(null);
       onHeatmapChange([...activeHeatmaps, id]);
     }
   }
-  function getLegendSymbol(layer) {
-    if (layer.id === "citylimits" || layer.id === "neighbourhoods") {
-      return null;
-    }
-    switch (layer.shape) {
-      case "circle":
-        return <span className="legend-symbol circle" style={{ background: layer.color }} />;
-      case "square":
-        return <span className="legend-symbol square" style={{ background: layer.color, border: layer.border || "2px solid #444" }} />;
-      case "triangle":
-        return <span className="legend-symbol triangle" style={{ borderBottomColor: layer.color }} />;
-      case "star":
-        return <span className="legend-symbol star" style={{ color: layer.color }}>★</span>;
-      case "hexagon":
-        return (
-          <svg width="18" height="16" className="legend-symbol hexagon">
-            <polygon points="9,1 17,5 17,13 9,16 1,13 1,5" fill={layer.color} stroke="#444" strokeWidth="1.5"/>
-          </svg>
-        );
-      case "custom-image":
-        return (
-          <img
-            src={layer.imagePath}
-            alt={layer.label}
-            className="legend-symbol custom-image"
+function getLegendSymbol(layer) {
+  if (layer.id === "citylimits" || layer.id === "neighbourhoods") return null;
+
+  const stroke = "#000";
+  const strokeWidth = 1.8;
+
+  switch (layer.shape) {
+    case "circle":
+      // same size as square & with black outline
+      return (
+        <span
+          className="legend-symbol circle"
+          style={{ background: layer.color, border: "2px solid #000" }}
+        />
+      );
+
+    case "square":
+      return (
+        <span
+          className="legend-symbol square"
+          style={{ background: layer.color, border: "2px solid #000" }}
+        />
+      );
+
+    case "triangle":
+      // a little larger + black outline
+      return (
+    <svg width="22" height="22" className="legend-symbol" aria-hidden="true">
+      <polygon points="11,4 19,18 3,18" fill={layer.color} stroke="#000" strokeWidth="1.8" />
+    </svg>
+  );
+
+    case "star":
+      // slightly larger star + black outline
+      return (
+        <svg width="22" height="22" className="legend-symbol" aria-hidden="true">
+          {(() => {
+            const cx = 11, cy = 11, outer = 8.5, inner = 4.2;
+            const pts = [];
+            for (let i = 0; i < 10; i++) {
+              const ang = (Math.PI / 5) * i - Math.PI / 2;
+              const r = i % 2 === 0 ? outer : inner;
+              pts.push(`${cx + r * Math.cos(ang)},${cy + r * Math.sin(ang)}`);
+            }
+            return (
+              <polygon
+                points={pts.join(" ")}
+                fill={layer.color}
+                stroke={stroke}
+                strokeWidth={strokeWidth}
+              />
+            );
+          })()}
+        </svg>
+      );
+
+    case "hexagon":
+      // symmetric hexagon (speciality stores) + a bit bigger
+      return (
+        <svg width="22" height="22" className="legend-symbol" aria-hidden="true">
+          <polygon
+            points="11,3 18,7.5 18,14.5 11,19 4,14.5 4,7.5"
+            fill={layer.color}
+            stroke={stroke}
+            strokeWidth={strokeWidth}
           />
-        );
-      default:
-        return <span className="legend-symbol circle" style={{ background: layer.color }} />;
-    }
+        </svg>
+      );
+
+    case "custom-image":
+      return (
+        <img
+          src={layer.imagePath}
+          alt=""
+          className="legend-symbol custom-image"
+        />
+      );
+
+    default:
+      return (
+        <span
+          className="legend-symbol circle"
+          style={{ background: layer.color, border: "2px solid #000" }}
+        />
+      );
   }
+}
+
 
   // ---- Sidebar main render ----
   return (
