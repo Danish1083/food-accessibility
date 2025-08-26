@@ -1,0 +1,11 @@
+* [33mf9e3c56[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m MAYBE Update MapDashboard and Sidebar components to add CHECK ACCESSIBILITY THING
+* [33m8bc9af2[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Add popup logic for transit stops and correct the issue of opoups for other food points
+[31m|[m * [33m2694532[m[33m ([m[1;31morigin/vercel[m[33m)[m try2
+[31m|[m * [33m81b0b91[m Corrected errors , add wait fetch till loading of url
+[31m|[m * [33m7269e80[m[33m ([m[1;32mvercel[m[33m)[m Replaced localhost with ngrok link
+[31m|[m * [33m2a5f258[m Made changes for Vercel deployment
+[31m|[m[31m/[m  
+* [33m14e55dd[m Added now neighbourhood shp in db & made relevant changes to frontend to visualize new file
+* [33me699c1e[m[33m ([m[1;32m2ndlast[m[33m)[m Sidebar is made with unique symbology, Title of dashboard added, a blueish theme is applied
+* [33m0f59847[m Initial commit
+* [33mbb8c91e[m Initialize project using Create React App
