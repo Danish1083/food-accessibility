@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import axios from "axios";
+import * as turf from "@turf/turf";
 import Sidebar from "./Sidebar";
 import "mapbox-gl/dist/mapbox-gl.css";
 import "./MapDashboard.css";
@@ -159,6 +160,7 @@ export default function MapDashboard() {
   const selectedPointRef = useRef(null);  // FeatureCollection for point
   const bufferRef = useRef(null);         // FeatureCollection for buffer
   const cursorLockedRef = useRef(false);
+  const [accessibilityResults, setAccessibilityResults] = useState([]);
 
   function lockCursorToPlus() {
     const map = mapRef.current;
@@ -238,18 +240,21 @@ export default function MapDashboard() {
     const emptyFC = { type: "FeatureCollection", features: [] };
     const p = map.getSource("user-point");
     const b = map.getSource("user-buffer");
+    const r = map.getSource("user-route");
     if (p) p.setData(emptyFC);
     if (b) b.setData(emptyFC);
+    if (r) r.setData(emptyFC);
 
     selectedPointRef.current = null;
     bufferRef.current = null;
+    setAccessibilityResults([]);
   }
 
   function attachOneTimeClick() {
     const map = mapRef.current;
     if (!map) return;
 
-    map.once("click", (e) => {
+    map.once("click", async (e) => {
       const { lng, lat } = e.lngLat;
       setSelectedCoords({ lng, lat });
 
@@ -280,6 +285,51 @@ export default function MapDashboard() {
       // Optionally revert cursor to default after capture
       map.getCanvas().style.cursor = "";
       // Keep button in "Reset" state until user clicks Reset
+
+      // Collect intersecting points
+      const intersectingPoints = [];
+      const bufferPolygon = bufferRef.current.features[0].geometry; // Polygon
+      const center = [lng, lat];
+
+      LAYERS.forEach(layer => {
+        if (!visibleLayers.includes(layer.id)) return;
+        if (["citylimits", "neighbourhoods"].includes(layer.id)) return;
+
+        const source = map.getSource(layer.id);
+        if (!source) return;
+        const data = source._data; // GeoJSON
+
+        data.features.forEach(feature => {
+          const pointCoords = feature.geometry.coordinates;
+          if (turf.booleanPointInPolygon(pointCoords, bufferPolygon)) {
+            const props = feature.properties;
+            const name = props.Name || props.name || props.store_name || props.stop_name || "Unknown";
+            intersectingPoints.push({
+              layer: layer.label,
+              name,
+              coords: pointCoords,
+              properties: props
+            });
+          }
+        });
+      });
+
+      // Get walking distances and routes
+      const promises = intersectingPoints.map(async (point) => {
+        const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${center[0]},${center[1]};${point.coords[0]},${point.coords[1]}?geometries=geojson&access_token=${mapboxgl.accessToken}`;
+        try {
+          const res = await axios.get(url);
+          const route = res.data.routes[0];
+          const distanceMeters = route.distance;
+          return { ...point, distance: Math.round(distanceMeters), routeGeometry: route.geometry };
+        } catch (err) {
+          console.error(err);
+          return { ...point, distance: 'Error', routeGeometry: null };
+        }
+      });
+
+      const results = await Promise.all(promises);
+      setAccessibilityResults(results);
     });
   }
 
@@ -302,6 +352,29 @@ export default function MapDashboard() {
       map.getCanvas().style.cursor = "";
     }
   }
+
+  const showRoute = (result) => {
+    const map = mapRef.current;
+    if (!map || !result.routeGeometry) return;
+
+    const routeFeature = {
+      type: 'Feature',
+      geometry: result.routeGeometry,
+      properties: {}
+    };
+
+    const routeSource = map.getSource('user-route');
+    if (routeSource) {
+      routeSource.setData({
+        type: 'FeatureCollection',
+        features: [routeFeature]
+      });
+    }
+
+    // Zoom to the route
+    const bbox = turf.bbox(routeFeature);
+    map.fitBounds(bbox, { padding: 50 });
+  };
 
   // Initialize map and fetch data once
   useEffect(() => {
@@ -370,6 +443,7 @@ export default function MapDashboard() {
       try {
         const cityResponse = await axios.get("http://localhost:4000/api/geo/citylimits");
         map.addSource("citylimits", { type: "geojson", data: cityResponse.data });
+
         map.addLayer({
           id: "citylimits-line",
           type: "line",
@@ -377,39 +451,38 @@ export default function MapDashboard() {
           paint: {
             "line-color": "#114b07",
             "line-width": 3,
-            "line-opacity": 1
+            "line-opacity": 0.85,
           },
-          layout: { visibility: visibleLayers.includes("citylimits") ? "visible" : "none" }
+          layout: {
+            visibility: visibleLayers.includes("citylimits") ? "visible" : "none",
+          },
         });
-      } catch (error) { 
-        console.error("Error loading City Limits:", error); 
+      } catch (error) {
+        console.error("Error loading City Limits:", error);
       }
 
       // 2. Neighbourhoods
       try {
-        const hoodResponse = await axios.get("http://localhost:4000/api/geo/neighbourhoods");
-        hoodResponse.data.features.forEach(f => {
-          f.properties.color = "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
-        });
-        map.addSource("neighbourhoods", { type: "geojson", data: hoodResponse.data });
+        const neighResponse = await axios.get("http://localhost:4000/api/geo/neighbourhoods");
+        map.addSource("neighbourhoods", { type: "geojson", data: neighResponse.data });
+
         map.addLayer({
           id: "neighbourhoods-fill",
           type: "fill",
           source: "neighbourhoods",
           paint: {
-            "fill-color": ["get", "color"],
-            "fill-opacity": 0.30,
-            "fill-outline-color": "black"
+            "fill-color": "#d4f1f9",
+            "fill-opacity": 0.4,
+            "fill-outline-color": "#444",
           },
-          layout: { visibility: visibleLayers.includes("neighbourhoods") ? "visible" : "none" }
+          layout: {
+            visibility: visibleLayers.includes("neighbourhoods") ? "visible" : "none",
+          },
         });
 
-        // Add popup functionality for neighbourhoods
+        // Add popup for neighbourhoods
         map.on("click", "neighbourhoods-fill", (e) => {
-          const feature = e.features[0];
-          const properties = feature.properties;
-          console.log("Neighbourhood properties:", properties);
-          const name = properties["Name"]; // Access the correct property
+          const { name } = e.features[0].properties; // Assuming 'name' property
 
           const popupContent = `
             <div style="font-family: Arial, sans-serif;">
@@ -601,6 +674,23 @@ export default function MapDashboard() {
         layout: { visibility: "visible" },
       });
 
+      // Add user-route source and layer
+      map.addSource("user-route", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+      map.addLayer({
+        id: "user-route-line",
+        type: "line",
+        source: "user-route",
+        paint: {
+          "line-color": "#3887be",
+          "line-width": 5,
+          "line-opacity": 0.8,
+        },
+        layout: { visibility: "visible" },
+      });
+
       // If we already had a selection before a basemap change, re-apply it
       if (selectedPointRef.current) {
         const src = map.getSource("user-point");
@@ -761,6 +851,58 @@ export default function MapDashboard() {
         ref={mapContainerRef}
         className="map-dashboard-map-container"
       />
+
+      {/* Accessibility Results Div */}
+      {accessibilityResults.length > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            background: "white",
+            padding: "20px",
+            zIndex: 200,
+            borderRadius: "10px",
+            maxHeight: "80vh",
+            overflow: "auto",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+            maxWidth: "400px",
+            fontFamily: "Arial, sans-serif",
+          }}
+        >
+          <button
+            onClick={() => setAccessibilityResults([])}
+            style={{
+              float: "right",
+              background: "none",
+              border: "none",
+              fontSize: "20px",
+              cursor: "pointer",
+              color: "#333",
+            }}
+          >
+            ×
+          </button>
+          <h3 style={{ margin: "0 0 15px 0", color: "#1976d2" }}>Points within 1km Buffer</h3>
+          <ul style={{ listStyleType: "none", padding: 0 }}>
+            {accessibilityResults.map((res, i) => (
+              <li 
+                key={i} 
+                onClick={() => showRoute(res)}
+                style={{ 
+                  marginBottom: "10px", 
+                  borderBottom: "1px solid #eee", 
+                  paddingBottom: "10px",
+                  cursor: "pointer"
+                }}
+              >
+                <strong>{res.layer}:</strong> {res.name} - Walking Distance: {res.distance} meters
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

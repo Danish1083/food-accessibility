@@ -33,118 +33,109 @@ function IconDemographics() {
     </svg>
   );
 }
-
-export default function Sidebar({
+  
+export default function Sidebar(
+  {
   layers = [],
   visibleLayers = [],
   onToggle,
   heatmapCategories = [],
   activeHeatmaps = [],
   onHeatmapChange,
+  // NEW props from MapDashboard
+  accessibilityActive,
+  onToggleAccessibility,
+  selectedCoords
 })  {
-  // Add sidebar open/close & mode state
-  
   const [open, setOpen] = useState(true);
   const [sidebarMode, setSidebarMode] = useState("visualization"); // "visualization" | "heatmap" | "demographics"
-const [activeHeatmap, setActiveHeatmap] = useState(null);
-// Handler for heatmap selection
- function handleHeatmapCheckbox(id) {
+  const [activeHeatmap, setActiveHeatmap] = useState(null);
+
+  function handleHeatmapCheckbox(id) {
     if (activeHeatmaps.includes(id)) {
       onHeatmapChange(activeHeatmaps.filter(hm => hm !== id));
     } else {
       onHeatmapChange([...activeHeatmaps, id]);
     }
   }
-function getLegendSymbol(layer) {
-  if (layer.id === "citylimits" || layer.id === "neighbourhoods") return null;
 
-  const stroke = "#000";
-  const strokeWidth = 1.8;
+  function getLegendSymbol(layer) {
+    if (layer.id === "citylimits" || layer.id === "neighbourhoods") return null;
+    const stroke = "#000";
+    const strokeWidth = 1.8;
 
-  switch (layer.shape) {
-    case "circle":
-      // same size as square & with black outline
-      return (
-        <span
-          className="legend-symbol circle"
-          style={{ background: layer.color, border: "2px solid #000" }}
-        />
-      );
-
-    case "square":
-      return (
-        <span
-          className="legend-symbol square"
-          style={{ background: layer.color, border: "2px solid #000" }}
-        />
-      );
-
-    case "triangle":
-      // a little larger + black outline
-      return (
-    <svg width="22" height="22" className="legend-symbol" aria-hidden="true">
-      <polygon points="11,4 19,18 3,18" fill={layer.color} stroke="#000" strokeWidth="1.8" />
-    </svg>
-  );
-
-    case "star":
-      // slightly larger star + black outline
-      return (
-        <svg width="22" height="22" className="legend-symbol" aria-hidden="true">
-          {(() => {
-            const cx = 11, cy = 11, outer = 8.5, inner = 4.2;
-            const pts = [];
-            for (let i = 0; i < 10; i++) {
-              const ang = (Math.PI / 5) * i - Math.PI / 2;
-              const r = i % 2 === 0 ? outer : inner;
-              pts.push(`${cx + r * Math.cos(ang)},${cy + r * Math.sin(ang)}`);
-            }
-            return (
-              <polygon
-                points={pts.join(" ")}
-                fill={layer.color}
-                stroke={stroke}
-                strokeWidth={strokeWidth}
-              />
-            );
-          })()}
-        </svg>
-      );
-
-    case "hexagon":
-      // symmetric hexagon (speciality stores) + a bit bigger
-      return (
-        <svg width="22" height="22" className="legend-symbol" aria-hidden="true">
-          <polygon
-            points="11,3 18,7.5 18,14.5 11,19 4,14.5 4,7.5"
-            fill={layer.color}
-            stroke={stroke}
-            strokeWidth={strokeWidth}
+    switch (layer.shape) {
+      case "circle":
+        return (
+          <span
+            className="legend-symbol circle"
+            style={{ background: layer.color, border: "2px solid #000" }}
           />
-        </svg>
-      );
-
-    case "custom-image":
-      return (
-        <img
-          src={layer.imagePath}
-          alt=""
-          className="legend-symbol custom-image"
-        />
-      );
-
-    default:
-      return (
-        <span
-          className="legend-symbol circle"
-          style={{ background: layer.color, border: "2px solid #000" }}
-        />
-      );
+        );
+      case "square":
+        return (
+          <span
+            className="legend-symbol square"
+            style={{ background: layer.color, border: "2px solid #000" }}
+          />
+        );
+      case "triangle":
+        return (
+          <svg width="22" height="22" className="legend-symbol" aria-hidden="true">
+            <polygon points="11,4 19,18 3,18" fill={layer.color} stroke="#000" strokeWidth="1.8" />
+          </svg>
+        );
+      case "star":
+        return (
+          <svg width="22" height="22" className="legend-symbol" aria-hidden="true">
+            {(() => {
+              const cx = 11, cy = 11, outer = 8.5, inner = 4.2;
+              const pts = [];
+              for (let i = 0; i < 10; i++) {
+                const ang = (Math.PI / 5) * i - Math.PI / 2;
+                const r = i % 2 === 0 ? outer : inner;
+                pts.push(`${cx + r * Math.cos(ang)},${cy + r * Math.sin(ang)}`);
+              }
+              return (
+                <polygon
+                  points={pts.join(" ")}
+                  fill={layer.color}
+                  stroke={stroke}
+                  strokeWidth={strokeWidth}
+                />
+              );
+            })()}
+          </svg>
+        );
+      case "hexagon":
+        return (
+          <svg width="22" height="22" className="legend-symbol" aria-hidden="true">
+            <polygon
+              points="11,3 18,7.5 18,14.5 11,19 4,14.5 4,7.5"
+              fill={layer.color}
+              stroke={stroke}
+              strokeWidth={strokeWidth}
+            />
+          </svg>
+        );
+      case "custom-image":
+        return (
+          <img
+            src={layer.imagePath}
+            alt=""
+            className="legend-symbol custom-image"
+          />
+        );
+      default:
+        return (
+          <span
+            className="legend-symbol circle"
+            style={{ background: layer.color, border: "2px solid #000" }}
+          />
+        );
+    }
   }
-}
 
-
-  // ---- Sidebar main render ----
   return (
     <>
       {/* Toggle Button - top left, floats */}
@@ -154,13 +145,10 @@ function getLegendSymbol(layer) {
         aria-label={open ? "Close sidebar" : "Open sidebar"}
       >
         <span className="sidebar-toggle-icon">
-          {/* Hamburger/Chevron Icon */}
           <svg width="30" height="30">
             {open ? (
-              // Chevron Left (for close)
               <polyline points="18,7 11,15 18,23" fill="none" stroke="#246" strokeWidth="3" strokeLinecap="round"/>
             ) : (
-              // Hamburger (for open)
               <>
                 <rect x="7" y="9" width="16" height="3" rx="1.5" fill="#246"/>
                 <rect x="7" y="14" width="16" height="3" rx="1.5" fill="#246"/>
@@ -170,8 +158,22 @@ function getLegendSymbol(layer) {
           </svg>
         </span>
       </button>
-      {/* Sidebar itself */}
+
       <div className={`sidebar-container${open ? "" : " sidebar-hidden"}`}>
+        {/* ACCESSIBILITY CTA */}
+        <button
+          className={`access-btn ${accessibilityActive ? "clear" : ""}`}
+          onClick={onToggleAccessibility}
+        >
+          {accessibilityActive ? "Clear" : "Check Accessibility"}
+        </button>
+        {accessibilityActive && !selectedCoords && (
+          <div className="access-hint">Click anywhere on the map to drop a point and build a 1 km buffer.</div>
+        )}
+        {accessibilityActive && selectedCoords && (
+          <div className="access-hint">Point selected: {selectedCoords.lat.toFixed(5)}, {selectedCoords.lng.toFixed(5)}</div>
+        )}
+
         {/* ---- Sidebar modes ---- */}
         {sidebarMode === "visualization" && (
           <>
@@ -200,38 +202,37 @@ function getLegendSymbol(layer) {
             </div>
           </>
         )}
-    {sidebarMode === "heatmap" && (
-      <div className="sidebar-heatmap-list">
-        <div className="sidebar-heatmap-title">Heatmaps</div>
-        <div className="sidebar-heatmap-desc">
-          Select categories to visualize as heatmaps.
-        </div>
-        <div className="heatmap-btn-grid">
-          {heatmapCategories.map(item => (
-           <label key={item.id} className="heatmap-row" style={{cursor: "pointer", alignItems: "center", display: "flex", gap: "10px", padding: "6px 0"}}>
-  <input
-    type="checkbox"
-    checked={activeHeatmaps.includes(item.id)}
-    onChange={() => handleHeatmapCheckbox(item.id)}
-    className="heatmap-checkbox"
-  />
-  <span className="heatmap-icon">{getLegendSymbol(item)}</span>
-  <span>
-    <span className="heatmap-label" style={{fontWeight: 600}}>{item.label}</span>
-    <span className="heatmap-desc" style={{display: "block", fontSize: "0.85em", color: "#5c6a7b", fontWeight: 400}}>{item.desc}</span>
-  </span>
-</label>
-          ))}
-        </div>
-      </div>
-    )}
 
-        {sidebarMode === "demographics" && (
-          <div className="sidebar-demographics-empty">
-            {/* You can add demographics controls here */}
+        {sidebarMode === "heatmap" && (
+          <div className="sidebar-heatmap-list">
+            <div className="sidebar-heatmap-title">Heatmaps</div>
+            <div className="sidebar-heatmap-desc">
+              Select categories to visualize as heatmaps.
+            </div>
+            <div className="heatmap-btn-grid">
+              {heatmapCategories.map(item => (
+                <label key={item.id} className="heatmap-row" style={{cursor: "pointer", alignItems: "center", display: "flex", gap: "10px", padding: "6px 0"}}>
+                  <input
+                    type="checkbox"
+                    checked={activeHeatmaps.includes(item.id)}
+                    onChange={() => handleHeatmapCheckbox(item.id)}
+                    className="heatmap-checkbox"
+                  />
+                  <span className="heatmap-icon">{getLegendSymbol(item)}</span>
+                  <span>
+                    <span className="heatmap-label" style={{fontWeight: 600}}>{item.label}</span>
+                    <span className="heatmap-desc" style={{display: "block", fontSize: "0.85em", color: "#5c6a7b", fontWeight: 400}}>{item.desc}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
           </div>
         )}
-        {/* ---- Mode Selector Row ---- */}
+
+        {sidebarMode === "demographics" && (
+          <div className="sidebar-demographics-empty" />
+        )}
+
         <div className="sidebar-mode-row">
           <label className={`mode-radio${sidebarMode === "visualization" ? " active" : ""}`}>
             <input

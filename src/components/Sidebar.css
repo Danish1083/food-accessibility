@@ -279,8 +279,8 @@
   pointer-events: none;
   transition: transform 0.28s cubic-bezier(.77,0,.18,1), opacity 0.18s;
 }
-
-
+ 
+ 
 /* Mode Selector Row */
 .sidebar-mode-row {
   position: absolute;          /* sticks to the bottom INSIDE the sidebar */
@@ -355,4 +355,30 @@
   height: 16px;
   accent-color: #1976d2;
   margin-top: 2px;
+}
+/* Accessibility CTA */
+.access-btn {
+  width: 100%;
+  margin: 0 0 10px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1.4px solid #1d5ea6;
+  background: #1976d2;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: .3px;
+  cursor: pointer;
+  box-shadow: 0 2px 10px #22485716;
+}
+.access-btn.clear {
+  background: #b71c1c;       /* red tone for Clear */
+  border-color: #8b1515;
+}
+.access-btn:hover {
+  filter: brightness(1.04);
+}
+.access-hint {
+  font-size: 12px;
+  color: #224857;
+  margin: -4px 0 10px 0;
 }
