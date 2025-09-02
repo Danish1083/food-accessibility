@@ -161,7 +161,296 @@ export default function MapDashboard() {
   const bufferRef = useRef(null);         // FeatureCollection for buffer
   const cursorLockedRef = useRef(false);
   const [accessibilityResults, setAccessibilityResults] = useState([]);
+ const [selectedDemographic, setSelectedDemographic] = useState(null);
+  const demographicsFCRef = useRef(null); // cache FeatureCollection from endpoint
+  const LEGEND_ID = "legend-box";
+    function quantileBreaks(values, k = 5) {
+    if (!values.length) return [];
+    const sorted = [...values].sort((a, b) => a - b);
+    const qs = [];
+    for (let i = 1; i < k; i++) {
+      const pos = (i * (sorted.length - 1)) / k;
+      const base = Math.floor(pos);
+      const rest = pos - base;
+      const val =
+        sorted[base] + (rest > 0 ? (sorted[base + 1] - sorted[base]) * rest : 0);
+      qs.push(val);
+    }
+    return qs; // k-1 thresholds
+  }
+  function formatNum(n) {
+  if (!Number.isFinite(n)) return String(n);
+  const abs = Math.abs(n);
+  if (abs >= 1000) return n.toFixed(0);
+  if (abs >= 100)  return n.toFixed(1);
+  if (abs >= 10)   return n.toFixed(2);
+  if (abs >= 1)    return n.toFixed(2);
+  return n.toFixed(3);
+}
+function jenksBreaks(values, k = 5) {
+  const data = [...values].sort((a, b) => a - b);
+  const n = data.length;
+  if (n === 0) return [];
+  if (k <= 1) return [data[0], data[n - 1]];
+  if (k > n) k = n;
 
+  // matrices
+  const mat1 = Array(n + 1).fill(0).map(() => Array(k + 1).fill(0));
+  const mat2 = Array(n + 1).fill(0).map(() => Array(k + 1).fill(Infinity));
+
+  // init
+  for (let j = 1; j <= k; j++) {
+    mat1[0][j] = 1;
+    mat2[0][j] = 0;
+  }
+
+  for (let i = 1; i <= n; i++) {
+    let s1 = 0, s2 = 0, w = 0;
+    for (let m = 1; m <= i; m++) {
+      const i3 = i - m + 1;
+      const val = data[i3 - 1];
+      s1 += val;
+      s2 += val * val;
+      w += 1;
+      const variance = s2 - (s1 * s1) / w;
+      if (i3 > 1) {
+        for (let j = 2; j <= k; j++) {
+          if (mat2[i][j] >= variance + mat2[i3 - 2][j - 1]) {
+            mat1[i][j] = i3;
+            mat2[i][j] = variance + mat2[i3 - 2][j - 1];
+          }
+        }
+      }
+    }
+    mat1[i][1] = 1;
+    mat2[i][1] = s2 - (s1 * s1) / w;
+  }
+
+  const breaks = Array(k + 1).fill(0);
+  breaks[k] = data[n - 1];
+  breaks[0] = data[0];
+
+  let countK = k;
+  let idx = n;
+  while (countK > 1) {
+    const id = mat1[idx][countK] - 1;
+    breaks[countK - 1] = data[id];
+    idx = id;
+    countK--;
+  }
+  return breaks;
+}
+function buildJenksRanges(values, k = 5) {
+  const brks = jenksBreaks(values, k);         // length k+1
+  const ranges = [];
+  for (let i = 0; i < brks.length - 1; i++) {
+    ranges.push({ lower: brks[i], upper: brks[i + 1] });
+  }
+  return ranges;
+}
+
+function buildJenksCaseExpression(field, ranges) {
+  const v = ["to-number", ["get", field]];
+  const expr = ["case",
+    ["==", v, -99], NODATA_COLOR
+  ];
+  ranges.forEach((r, i) => {
+    expr.push(["<=", v, r.upper]);
+    expr.push(CLASS_COLORS[i]);
+  });
+  // fallback (shouldn't hit unless FP round): darkest
+  expr.push(CLASS_COLORS[CLASS_COLORS.length - 1]);
+  return expr;
+}
+
+// ===== Legend that mirrors EXACT ranges used on the map =====
+function labelsFromRanges(ranges) {
+  if (!ranges || !ranges.length) return [];
+  const lbls = [];
+  // 1st bin: [min, upper1]  (inclusive)
+  lbls.push(`[${formatNum(ranges[0].lower)}, ${formatNum(ranges[0].upper)}]`);
+  for (let i = 1; i < ranges.length; i++) {
+    // next bins: (prevUpper, upper]  (exclusive lower, inclusive upper)
+    lbls.push(`(${formatNum(ranges[i - 1].upper)}, ${formatNum(ranges[i].upper)}]`);
+  }
+  return lbls;
+}
+
+    const CLASS_COLORS = ["#f7fbff","#c6dbef","#6baed6","#3182bd","#08519c"];
+  const NODATA_COLOR = "#9e9e9e";
+ function buildChoroplethExpression(field, breaks) {
+    // style: step(expression, color for < firstBreak, firstBreak, nextColor, ...)
+    // Values come in as strings; coerce with to-number
+    const expr = ["step", ["to-number", ["get", field]], CLASS_COLORS[0]];
+
+    breaks.forEach((t, i) => {
+      expr.push(t);
+      expr.push(CLASS_COLORS[i + 1]);
+    });
+
+    // Special color for -99
+    // We’ll wrap the whole thing with a conditional: if value == -99 use gray else use step()
+    return [
+      "case",
+      ["==", ["to-number", ["get", field]], -99],
+      NODATA_COLOR,
+      expr
+    ];
+  }
+
+  function formatRange(n) {
+    // compact pretty print
+    const x = Math.abs(n) >= 100 ? n.toFixed(0) : Math.abs(n) >= 10 ? n.toFixed(1) : n.toFixed(2);
+    return x.replace(/\.00$/, "");
+  }
+
+ function updateLegendExact(field, ranges) {
+  const box = document.getElementById("legend-box");
+  if (!box) return;
+
+  if (!ranges || !ranges.length) {
+    box.innerHTML = "";
+    return;
+  }
+  const labels = labelsFromRanges(ranges);
+
+  box.innerHTML = `
+    <div class="legend-title">${field}</div>
+    <div class="legend-rows">
+      ${labels.map((txt, i) => `
+        <div class="legend-row">
+          <span class="legend-swatch" style="background:${CLASS_COLORS[i]}"></span>
+          <span class="legend-text">${txt}</span>
+        </div>`).join("")}
+      <div class="legend-row">
+        <span class="legend-swatch" style="background:${NODATA_COLOR}"></span>
+        <span class="legend-text">No data (-99)</span>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#5c6a7b;margin-top:6px;">
+      Binning: Natural Breaks (Jenks). Ranges are exact and match the map.
+    </div>
+  `;
+}
+   async function ensureDemographicsSource(map) {
+    if (map.getSource("demographics")) return;
+    // Fetch once and cache
+    if (!demographicsFCRef.current) {
+      const res = await axios.get("http://localhost:4000/api/geo/nbcensus6factors");
+      demographicsFCRef.current = res.data; // FeatureCollection
+    }
+    map.addSource("demographics", { type: "geojson", data: demographicsFCRef.current });
+  }
+
+async function drawChoropleth(field) {
+  const map = mapRef.current;
+  if (!map) return;
+  await ensureDemographicsSource(map);
+
+  // Gather values; ignore -99 for classification
+  const values = [];
+  const features = demographicsFCRef.current.features || [];
+
+  // Debug arrays (so you can verify in console)
+  const rawAudit = [];
+
+  for (const f of features) {
+    const raw = f?.properties?.[field];
+    const num = Number(raw);
+    rawAudit.push({
+      neighborhood: f?.properties?.neighborhood ?? f?.properties?.name ?? "",
+      raw,
+      num
+    });
+    if (Number.isFinite(num) && num !== -99) values.push(num);
+  }
+
+  // Edge: no valid values
+  if (!values.length) {
+    if (map.getLayer("demographics-fill")) map.removeLayer("demographics-fill");
+    if (map.getLayer("demographics-outline")) map.removeLayer("demographics-outline");
+    updateLegendExact(field, []);
+    console.warn(`[${field}] No valid (non -99) values found.`);
+    return;
+  }
+
+  // Build Jenks ranges
+  const ranges = buildJenksRanges(values, 5); // 5 classes
+  const fillExpr = buildJenksCaseExpression(field, ranges);
+
+  // Add/update layers
+  if (!map.getLayer("demographics-fill")) {
+    map.addLayer({
+      id: "demographics-fill",
+      type: "fill",
+      source: "demographics",
+      paint: {
+        "fill-color": fillExpr,
+        "fill-opacity": 0.72,
+        "fill-outline-color": "#444"
+      }
+    });
+  } else {
+    map.setPaintProperty("demographics-fill", "fill-color", fillExpr);
+  }
+
+  if (!map.getLayer("demographics-outline")) {
+    map.addLayer({
+      id: "demographics-outline",
+      type: "line",
+      source: "demographics",
+      paint: {
+        "line-color": "#555",
+        "line-width": 0.8,
+        "line-opacity": 0.9
+      }
+    });
+  }
+
+  // ======= DEBUG / VERIFICATION you asked for =======
+  // Count how many features land in each bin (exactly like the map)
+  const counts = new Array(ranges.length).fill(0);
+  for (const f of features) {
+    const v = Number(f?.properties?.[field]);
+    if (!Number.isFinite(v) || v === -99) continue;
+    for (let i = 0; i < ranges.length; i++) {
+      const isInBin = i === 0
+        ? (v >= ranges[i].lower && v <= ranges[i].upper)                // [lower, upper]
+        : (v > ranges[i - 1].upper && v <= ranges[i].upper);            // (prevUpper, upper]
+      if (isInBin) { counts[i]++; break; }
+    }
+  }
+
+  // Print an audit table you can trust
+  const table = ranges.map((r, idx) => ({
+    class: idx + 1,
+    interval: idx === 0
+      ? `[${formatNum(r.lower)}, ${formatNum(r.upper)}]`
+      : `(${formatNum(ranges[idx - 1].upper)}, ${formatNum(r.upper)}]`,
+    count: counts[idx]
+  }));
+  const minVal = Math.min(...values);
+  const maxVal = Math.max(...values);
+  console.groupCollapsed(`Choropleth (${field}) — Jenks audit`);
+  console.log("Min:", minVal, "Max:", maxVal);
+  console.table(table);
+  // If you want to inspect original rows:
+  // console.log("Raw audit (first 50):", rawAudit.slice(0, 50));
+  console.groupEnd();
+
+  // Update legend so it matches EXACTLY what the map uses
+  updateLegendExact(field, ranges);
+}
+
+
+  function clearChoropleth() {
+    const map = mapRef.current;
+    if (!map) return;
+    if (map.getLayer("demographics-fill")) map.removeLayer("demographics-fill");
+    if (map.getLayer("demographics-outline")) map.removeLayer("demographics-outline");
+    const container = document.getElementById(LEGEND_ID);
+    if (container) container.innerHTML = "";
+  }
   function lockCursorToPlus() {
     const map = mapRef.current;
     if (!map) return;
@@ -463,15 +752,41 @@ export default function MapDashboard() {
 
       // 2. Neighbourhoods
       try {
-        const neighResponse = await axios.get("http://localhost:4000/api/geo/neighbourhoods");
-        map.addSource("neighbourhoods", { type: "geojson", data: neighResponse.data });
+      const neighResponse = await axios.get("http://localhost:4000/api/geo/neighbourhoods");
+
+// stable color from a string (name) so colors don't shuffle every reload
+function stableColorFromString(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) | 0;
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 65%, 70%)`;
+}
+
+// choose a name key (fallbacks)
+const NAME_KEYS = [
+  "Boundary_Name","BOUNDARY_NAME","BOUNDARY_N","NSA_NA","NSA_NAME",
+  "Name","NAME","name","neighbourhood","neighborhood","NB_NAME","NBNAME"
+];
+
+const neighData = neighResponse.data; // FeatureCollection
+neighData.features.forEach(f => {
+  const p = f.properties || {};
+  let nm = "Unknown";
+  for (const k of NAME_KEYS) {
+    if (p[k] !== undefined && p[k] !== null && `${p[k]}`.trim() !== "") { nm = `${p[k]}`.trim(); break; }
+  }
+  f.properties = { ...p, fillClr: stableColorFromString(nm) };
+});
+
+map.addSource("neighbourhoods", { type: "geojson", data: neighData });
+
 
         map.addLayer({
           id: "neighbourhoods-fill",
           type: "fill",
           source: "neighbourhoods",
           paint: {
-            "fill-color": "#d4f1f9",
+       "fill-color": ["get", "fillClr"],
             "fill-opacity": 0.4,
             "fill-outline-color": "#444",
           },
@@ -481,21 +796,28 @@ export default function MapDashboard() {
         });
 
         // Add popup for neighbourhoods
-        map.on("click", "neighbourhoods-fill", (e) => {
-          const { name } = e.features[0].properties; // Assuming 'name' property
+      map.on("click", "neighbourhoods-fill", (e) => {
+  const props = e.features[0].properties;
 
-          const popupContent = `
-            <div style="font-family: Arial, sans-serif;">
-              <h4 style="margin: 0 0 8px 0; color: #333;">Neighbourhood</h4>
-              <p style="margin: 2px 0;"><strong>Name:</strong> ${name || "N/A"}</p>
-            </div>
-          `;
+  // Try multiple likely property names
+  const neighName =
+    props.Boundary_Name ||
+    props.BOUNDARY_N ||
+    props.NSA_NA ||
+    props.Name ||
+    props.name ||
+    "Unknown";
 
-          new mapboxgl.Popup()
-            .setLngLat(e.lngLat)
-            .setHTML(popupContent)
-            .addTo(map);
-        });
+  const popupContent = `
+    <div style="font-family: Arial, sans-serif;">
+      <h4 style="margin: 0 0 8px 0; color: #333;">Neighbourhood</h4>
+      <p style="margin: 2px 0;"><strong>Name:</strong> ${neighName}</p>
+    </div>
+  `;
+
+  new mapboxgl.Popup().setLngLat(e.lngLat).setHTML(popupContent).addTo(map);
+});
+
 
         // Change cursor on hover for neighbourhoods
         map.on("mouseenter", "neighbourhoods-fill", () => {
@@ -706,6 +1028,9 @@ export default function MapDashboard() {
         map.getCanvas().style.cursor = PLUS_CURSOR;
         attachOneTimeClick();
       }
+         if (selectedDemographic) {
+        await drawChoropleth(selectedDemographic);
+      }
     });
 
     return () => map.remove();
@@ -748,7 +1073,14 @@ export default function MapDashboard() {
       }
     });
   }, [visibleLayers]);
-
+ useEffect(() => {
+    if (!mapRef.current) return;
+    if (selectedDemographic) {
+      drawChoropleth(selectedDemographic);
+    } else {
+      clearChoropleth();
+    }
+  }, [selectedDemographic]);
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -810,7 +1142,7 @@ export default function MapDashboard() {
       </div>
 
       {/* Sidebar for layer toggles */}
-      <Sidebar
+       <Sidebar
         layers={LAYERS}
         visibleLayers={visibleLayers}
         onToggle={handleToggleLayer}
@@ -820,6 +1152,9 @@ export default function MapDashboard() {
         accessibilityActive={accessibilityActive}
         onToggleAccessibility={handleToggleAccessibility}
         selectedCoords={selectedCoords}
+        // NEW: demographics selection
+        selectedDemographic={selectedDemographic}
+        onSelectDemographic={setSelectedDemographic}
       />
 
       {/* Basemap Switcher */}
@@ -845,14 +1180,13 @@ export default function MapDashboard() {
         ))}
       </div>
 
-      {/* Map container */}
-      <div
-        id="map-container"
-        ref={mapContainerRef}
-        className="map-dashboard-map-container"
-      />
+ {/* Map container */}
+      <div id="map-container" ref={mapContainerRef} className="map-dashboard-map-container" />
 
-      {/* Accessibility Results Div */}
+      {/* ===== NEW: Legend box for demographics ===== */}
+      <div id={LEGEND_ID} className="legend-box" />
+
+      {/* Accessibility Results (unchanged) */}
       {accessibilityResults.length > 0 && (
         <div
           style={{
@@ -887,12 +1221,12 @@ export default function MapDashboard() {
           <h3 style={{ margin: "0 0 15px 0", color: "#1976d2" }}>Points within 1km Buffer</h3>
           <ul style={{ listStyleType: "none", padding: 0 }}>
             {accessibilityResults.map((res, i) => (
-              <li 
-                key={i} 
+              <li
+                key={i}
                 onClick={() => showRoute(res)}
-                style={{ 
-                  marginBottom: "10px", 
-                  borderBottom: "1px solid #eee", 
+                style={{
+                  marginBottom: "10px",
+                  borderBottom: "1px solid #eee",
                   paddingBottom: "10px",
                   cursor: "pointer"
                 }}

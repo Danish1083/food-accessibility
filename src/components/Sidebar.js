@@ -33,9 +33,17 @@ function IconDemographics() {
     </svg>
   );
 }
-  
-export default function Sidebar(
-  {
+
+const DEMO_BUTTONS = [
+  { id: "medianage", label: "Median Age" },
+  { id: "children", label: "Children" },
+  { id: "old65over", label: "65+ Years" },
+  { id: "oneparentfamily", label: "One-Parent Families" },
+  { id: "renter", label: "Renter" },
+  { id: "percenlimat", label: "LIM-AT (%)" },
+];
+
+export default function Sidebar({
   layers = [],
   visibleLayers = [],
   onToggle,
@@ -45,11 +53,13 @@ export default function Sidebar(
   // NEW props from MapDashboard
   accessibilityActive,
   onToggleAccessibility,
-  selectedCoords
+  selectedCoords,
+  // NEW for demographics
+  selectedDemographic,
+  onSelectDemographic
 })  {
   const [open, setOpen] = useState(true);
   const [sidebarMode, setSidebarMode] = useState("visualization"); // "visualization" | "heatmap" | "demographics"
-  const [activeHeatmap, setActiveHeatmap] = useState(null);
 
   function handleHeatmapCheckbox(id) {
     if (activeHeatmaps.includes(id)) {
@@ -230,7 +240,33 @@ export default function Sidebar(
         )}
 
         {sidebarMode === "demographics" && (
-          <div className="sidebar-demographics-empty" />
+          <>
+            <div className="sidebar-title">Demographics</div>
+            <div className="heatmap-btn-grid">
+              {DEMO_BUTTONS.map(btn => {
+                const active = selectedDemographic === btn.id;
+                return (
+                  <button
+                    key={btn.id}
+                    type="button"
+                    onClick={() => onSelectDemographic(active ? null : btn.id)}
+                    className={`heatmap-btn ${active ? "active" : ""}`}
+                    aria-pressed={active}
+                    style={{display:"flex",flexDirection:"row",justifyContent:"space-between"}}
+                  >
+                    <span className="heatmap-label">{btn.label}</span>
+                    <input
+                      type="checkbox"
+                      readOnly
+                      checked={active}
+                      className="heatmap-checkbox"
+                      aria-hidden="true"
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
 
         <div className="sidebar-mode-row">

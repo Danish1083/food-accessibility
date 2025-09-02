@@ -55,3 +55,20 @@ padding-bottom: 20px;
   min-height: 100vh;
   min-width: 100vw;
 }
+.legend-box {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.15);
+  font-size: 13px;
+  min-width: 180px;
+  z-index: 150;
+}
+.legend-title { font-weight: 700; margin-bottom: 8px; color:#17436b; }
+.legend-rows { display: flex; flex-direction: column; gap: 6px; }
+.legend-row { display: flex; align-items: center; gap: 8px; }
+.legend-swatch { width: 16px; height: 12px; border: 1px solid #999; border-radius: 2px; }
+.legend-text { line-height: 1; }
