@@ -161,8 +161,10 @@ export default function MapDashboard() {
   const bufferRef = useRef(null);         // FeatureCollection for buffer
   const cursorLockedRef = useRef(false);
   const [accessibilityResults, setAccessibilityResults] = useState([]);
- const [selectedDemographic, setSelectedDemographic] = useState(null);
+  const [selectedDemographic, setSelectedDemographic] = useState(null);
+  const [choroplethOpacity, setChoroplethOpacity] = useState(0.72);
   const demographicsFCRef = useRef(null); // cache FeatureCollection from endpoint
+  const selectedDemographicRef = useRef(null);
   const LEGEND_ID = "legend-box";
     function quantileBreaks(values, k = 5) {
     if (!values.length) return [];
@@ -268,10 +270,10 @@ function labelsFromRanges(ranges) {
   if (!ranges || !ranges.length) return [];
   const lbls = [];
   // 1st bin: [min, upper1]  (inclusive)
-  lbls.push(`[${formatNum(ranges[0].lower)}, ${formatNum(ranges[0].upper)}]`);
+  lbls.push(`[${formatNum(ranges[0].lower)} - ${formatNum(ranges[0].upper)}]`);
   for (let i = 1; i < ranges.length; i++) {
     // next bins: (prevUpper, upper]  (exclusive lower, inclusive upper)
-    lbls.push(`(${formatNum(ranges[i - 1].upper)}, ${formatNum(ranges[i].upper)}]`);
+    lbls.push(`(${formatNum(ranges[i - 1].upper)} - ${formatNum(ranges[i].upper)}]`);
   }
   return lbls;
 }
@@ -367,8 +369,8 @@ async function drawChoropleth(field) {
 
   // Edge: no valid values
   if (!values.length) {
-    if (map.getLayer("demographics-fill")) map.removeLayer("demographics-fill");
-    if (map.getLayer("demographics-outline")) map.removeLayer("demographics-outline");
+    if (map.getLayer("demographics-fill")) map.setLayoutProperty("demographics-fill", "visibility", "none");
+    if (map.getLayer("demographics-outline")) map.setLayoutProperty("demographics-outline", "visibility", "none");
     updateLegendExact(field, []);
     console.warn(`[${field}] No valid (non -99) values found.`);
     return;
@@ -378,34 +380,11 @@ async function drawChoropleth(field) {
   const ranges = buildJenksRanges(values, 5); // 5 classes
   const fillExpr = buildJenksCaseExpression(field, ranges);
 
-  // Add/update layers
-  if (!map.getLayer("demographics-fill")) {
-    map.addLayer({
-      id: "demographics-fill",
-      type: "fill",
-      source: "demographics",
-      paint: {
-        "fill-color": fillExpr,
-        "fill-opacity": 0.72,
-        "fill-outline-color": "#444"
-      }
-    });
-  } else {
-    map.setPaintProperty("demographics-fill", "fill-color", fillExpr);
-  }
-
-  if (!map.getLayer("demographics-outline")) {
-    map.addLayer({
-      id: "demographics-outline",
-      type: "line",
-      source: "demographics",
-      paint: {
-        "line-color": "#555",
-        "line-width": 0.8,
-        "line-opacity": 0.9
-      }
-    });
-  }
+  // Update layers
+  map.setPaintProperty("demographics-fill", "fill-color", fillExpr);
+  map.setPaintProperty("demographics-fill", "fill-opacity", choroplethOpacity);
+  map.setLayoutProperty("demographics-fill", "visibility", "visible");
+  map.setLayoutProperty("demographics-outline", "visibility", "visible");
 
   // ======= DEBUG / VERIFICATION you asked for =======
   // Count how many features land in each bin (exactly like the map)
@@ -446,8 +425,8 @@ async function drawChoropleth(field) {
   function clearChoropleth() {
     const map = mapRef.current;
     if (!map) return;
-    if (map.getLayer("demographics-fill")) map.removeLayer("demographics-fill");
-    if (map.getLayer("demographics-outline")) map.removeLayer("demographics-outline");
+    if (map.getLayer("demographics-fill")) map.setLayoutProperty("demographics-fill", "visibility", "none");
+    if (map.getLayer("demographics-outline")) map.setLayoutProperty("demographics-outline", "visibility", "none");
     const container = document.getElementById(LEGEND_ID);
     if (container) container.innerHTML = "";
   }
@@ -831,6 +810,48 @@ map.addSource("neighbourhoods", { type: "geojson", data: neighData });
         console.error("Error loading Neighbourhoods:", error); 
       }
 
+      // Add demographics source and layers early (beneath points)
+      await ensureDemographicsSource(map);
+      map.addLayer({
+        id: "demographics-fill",
+        type: "fill",
+        source: "demographics",
+        paint: {
+          "fill-color": "#fff",
+          "fill-opacity": 0.72,
+          "fill-outline-color": "#444"
+        },
+        layout: { visibility: "none" }
+      });
+      map.addLayer({
+        id: "demographics-outline",
+        type: "line",
+        source: "demographics",
+        paint: {
+          "line-color": "#555",
+          "line-width": 0.8,
+          "line-opacity": 0.9
+        },
+        layout: { visibility: "none" }
+      });
+
+      // Add hover popup for demographics using mousemove and query
+      let hoverPopup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+      map.on('mousemove', (e) => {
+        if (!selectedDemographicRef.current) return;
+        const features = map.queryRenderedFeatures(e.point, { layers: ['demographics-fill'] });
+        if (features.length > 0) {
+          map.getCanvas().style.cursor = 'pointer';
+          const props = features[0].properties;
+          const name = props.neighborhood || props.name || 'Unknown';
+          const value = props[selectedDemographicRef.current] ?? 'N/A';
+          const content = `<strong>${name}</strong><br>${selectedDemographicRef.current}: ${value}`;
+          hoverPopup.setLngLat(e.lngLat).setHTML(content).addTo(map);
+        } else {
+          hoverPopup.remove();
+        }
+      });
+
       // 3. Point Layers with Custom Shapes
       for (let layer of LAYERS) {
         if (["citylimits", "neighbourhoods"].includes(layer.id)) continue;
@@ -1081,6 +1102,14 @@ map.addSource("neighbourhoods", { type: "geojson", data: neighData });
       clearChoropleth();
     }
   }, [selectedDemographic]);
+ useEffect(() => {
+    selectedDemographicRef.current = selectedDemographic;
+  }, [selectedDemographic]);
+ useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.getLayer("demographics-fill")) return;
+    map.setPaintProperty("demographics-fill", "fill-opacity", choroplethOpacity);
+  }, [choroplethOpacity]);
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -1155,6 +1184,8 @@ map.addSource("neighbourhoods", { type: "geojson", data: neighData });
         // NEW: demographics selection
         selectedDemographic={selectedDemographic}
         onSelectDemographic={setSelectedDemographic}
+        choroplethOpacity={choroplethOpacity}
+        onChangeChoroplethOpacity={setChoroplethOpacity}
       />
 
       {/* Basemap Switcher */}

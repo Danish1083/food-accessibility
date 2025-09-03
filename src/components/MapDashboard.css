@@ -72,3 +72,46 @@ padding-bottom: 20px;
 .legend-row { display: flex; align-items: center; gap: 8px; }
 .legend-swatch { width: 16px; height: 12px; border: 1px solid #999; border-radius: 2px; }
 .legend-text { line-height: 1; }
+
+
+/* Opacity slider box */
+.demographics-opacity {
+  position: absolute;
+  right: 12px;
+  bottom: 110px;            /* sits above legend */
+  z-index: 60;
+  background: #fff;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.18);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: system-ui, Arial, sans-serif;
+}
+.demographics-opacity label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #1f2d3d;
+}
+.demographics-opacity .hint {
+  font-size: 11px;
+  color: #5c6a7b;
+  margin-top: 4px;
+}
+
+/* Tooltip look (we’ll use mapbox Popup but match style) */
+.mapboxgl-popup {
+  max-width: 280px;
+}
+.mapboxgl-popup-content {
+  padding: 8px 10px;
+  border-radius: 8px;
+  font: 13px/1.35 system-ui, Arial, sans-serif;
+}
+.mapboxgl-popup-content .tt-title {
+  font-weight: 700;
+  color: #1f2d3d;
+  margin-bottom: 4px;
+}
+.mapboxgl-popup-content .tt-row {
+  color: #34495e;
+}
